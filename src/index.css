@@ -1,0 +1,247 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Base resets ──────────────────────────────────────────────────────────── */
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html {
+    @apply bg-sw-bg text-white antialiased;
+    font-family: 'Inter', sans-serif;
+  }
+
+  body {
+    @apply bg-sw-bg text-white min-h-screen;
+  }
+
+  * {
+    @apply border-sw-border;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Outfit', sans-serif;
+  }
+
+  /* Custom scrollbar — Stake-style thin dark track */
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #0B0F1E;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #2A3060;
+    border-radius: 2px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #FFD700;
+  }
+}
+
+/* ─── Component layer ──────────────────────────────────────────────────────── */
+@layer components {
+
+  /* ── Buttons ─── */
+  .btn-gold {
+    @apply inline-flex items-center justify-center gap-2
+           bg-gold-gradient text-sw-bg font-heading font-bold
+           px-5 py-2.5 rounded-sw text-sm
+           transition-all duration-200
+           hover:shadow-gold hover:scale-[1.02]
+           active:scale-[0.97]
+           disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100 disabled:shadow-none;
+  }
+
+  .btn-outline {
+    @apply inline-flex items-center justify-center gap-2
+           bg-transparent text-white font-heading font-semibold
+           px-5 py-2.5 rounded-sw text-sm
+           border border-sw-border-2
+           transition-all duration-200
+           hover:border-gold hover:text-gold hover:bg-gold/5
+           active:scale-[0.97]
+           disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2
+           bg-transparent text-white/60 font-body
+           px-4 py-2 rounded-sw text-sm
+           transition-all duration-200
+           hover:text-white hover:bg-white/5
+           active:scale-[0.97];
+  }
+
+  .btn-cyan {
+    @apply inline-flex items-center justify-center gap-2
+           bg-cyan/10 text-cyan font-heading font-bold
+           px-5 py-2.5 rounded-sw text-sm
+           border border-cyan/20
+           transition-all duration-200
+           hover:bg-cyan/20 hover:shadow-cyan hover:scale-[1.02]
+           active:scale-[0.97];
+  }
+
+  /* ── Cards ─── */
+  .card {
+    @apply bg-sw-card border border-sw-border rounded-sw-lg
+           shadow-card transition-all duration-200;
+  }
+
+  .card-hover {
+    @apply card hover:border-sw-border-2 hover:bg-sw-card-2 hover:-translate-y-0.5;
+  }
+
+  .card-gold {
+    @apply card border-gold/20 bg-card-glow-gold;
+  }
+
+  /* ── Badges / Pills ─── */
+  .badge-bronze {
+    @apply inline-flex items-center gap-1
+           bg-bronze/10 text-bronze border border-bronze/20
+           px-2.5 py-0.5 rounded-full text-xxs font-bold uppercase tracking-wide;
+  }
+  .badge-silver {
+    @apply inline-flex items-center gap-1
+           bg-silver/10 text-silver border border-silver/20
+           px-2.5 py-0.5 rounded-full text-xxs font-bold uppercase tracking-wide;
+  }
+  .badge-platinum {
+    @apply inline-flex items-center gap-1
+           bg-platinum/10 text-platinum border border-platinum/20
+           px-2.5 py-0.5 rounded-full text-xxs font-bold uppercase tracking-wide;
+  }
+
+  .badge-live {
+    @apply inline-flex items-center gap-1.5
+           bg-cyan/10 text-cyan border border-cyan/20
+           px-2.5 py-0.5 rounded-full text-xxs font-bold uppercase tracking-wide;
+  }
+
+  /* ── Coin display ─── */
+  .coin-chip {
+    @apply inline-flex items-center gap-1.5
+           bg-gold/10 text-gold border border-gold/25
+           px-3 py-1 rounded-full text-sm font-semibold;
+  }
+
+  .coin-dot {
+    @apply w-1.5 h-1.5 rounded-full bg-gold shadow-gold-sm;
+  }
+
+  /* ── Inputs ─── */
+  .input-sw {
+    @apply w-full bg-sw-card border border-sw-border rounded-sw
+           text-white placeholder-white/30 text-sm
+           px-4 py-2.5
+           transition-all duration-200
+           focus:outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/20;
+  }
+
+  /* ── Stat card ─── */
+  .stat-card {
+    @apply bg-sw-card border border-sw-border rounded-sw p-3;
+  }
+
+  /* ── Section header ─── */
+  .section-header {
+    @apply flex items-center justify-between mb-3;
+  }
+
+  .section-title {
+    @apply font-heading font-semibold text-sm text-white;
+  }
+
+  /* ── Divider ─── */
+  .divider {
+    @apply border-t border-sw-border my-4;
+  }
+
+  /* ── Glow dot (live indicator) ─── */
+  .glow-dot-gold {
+    @apply w-2 h-2 rounded-full bg-gold shadow-gold-sm animate-pulse;
+  }
+
+  .glow-dot-cyan {
+    @apply w-2 h-2 rounded-full bg-cyan animate-pulse;
+    box-shadow: 0 0 6px #00E5FF;
+  }
+
+  /* ── Game card ─── */
+  .game-card {
+    @apply card-hover p-3 text-center cursor-pointer;
+  }
+  .game-card:hover .game-card-icon {
+    @apply scale-110;
+  }
+  .game-card-icon {
+    @apply text-2xl mb-1.5 block transition-transform duration-200;
+  }
+  .game-card-name {
+    @apply font-heading font-semibold text-xs text-white mb-0.5;
+  }
+  .game-card-reward {
+    @apply text-xxs text-gold/70;
+  }
+
+  /* ── Celebrity card ─── */
+  .celeb-card {
+    @apply card-hover overflow-hidden cursor-pointer relative;
+  }
+  .celeb-card.selected {
+    @apply border-gold shadow-gold;
+  }
+
+  /* ── Progress bar ─── */
+  .progress-track {
+    @apply h-1 bg-sw-border rounded-full overflow-hidden;
+  }
+  .progress-fill {
+    @apply h-full bg-gold-gradient rounded-full transition-all duration-700;
+  }
+
+  /* ── Page wrapper ─── */
+  .page-content {
+    @apply max-w-5xl mx-auto px-4 py-6;
+  }
+}
+
+/* ─── Utility layer ────────────────────────────────────────────────────────── */
+@layer utilities {
+  .text-gold-gradient {
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .bg-dark-grid {
+    background-image:
+      linear-gradient(rgba(30,36,64,0.4) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(30,36,64,0.4) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+
+  /* Live feed scrolling ticker */
+  .ticker-wrap {
+    @apply overflow-hidden whitespace-nowrap;
+  }
+  .ticker-inner {
+    @apply inline-flex gap-12 animate-ticker;
+  }
+
+  /* Glassmorphism surface for modals/popups */
+  .glass {
+    background: rgba(19, 23, 43, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+}

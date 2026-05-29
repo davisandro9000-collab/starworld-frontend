@@ -1,0 +1,154 @@
+import { useState } from 'react';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../../stores/authStore';
+import CoinBalance from '../ui/CoinBalance';
+import TierBadge from '../ui/TierBadge';
+import NotificationBell from '../ui/NotificationBell';
+import { api } from '../../api/axios';
+
+export default function Navbar() {
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const { user, logout } = useAuthStore();
+  const navigate = useNavigate();
+
+  const navItems = [
+    { to: '/', label: 'Home', end: true },
+    { to: '/games', label: 'Games' },
+    { to: '/marketplace', label: 'Marketplace' },
+    { to: '/referrals', label: 'Referrals' },
+  ];
+
+  const handleLogout = async () => {
+    try {
+      await api.post('/auth/logout');
+    } catch (error) {
+      console.error('Logout API error:', error);
+    } finally {
+      logout(); // clears Zustand state (user, accessToken)
+      navigate('/auth/login');
+    }
+  };
+
+  return (
+    <header className="fixed top-0 left-0 right-0 z-navbar h-navbar bg-sw-card border-b border-sw-border shadow-inner-top">
+      <div className="max-w-7xl mx-auto h-full px-4 flex items-center gap-4">
+        {/* Logo */}
+        <Link to="/" className="flex items-center gap-2 shrink-0">
+          <span className="text-lg font-heading font-bold text-gold-gradient">⭐ StarWorld</span>
+        </Link>
+
+        {/* Desktop nav */}
+        <nav className="hidden md:flex items-center gap-1 ml-2">
+          {navItems.map(({ to, label, end }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={end}
+              className={({ isActive }) =>
+                `px-3 py-1.5 rounded-sw text-sm font-body transition-all duration-150 ${
+                  isActive
+                    ? 'bg-gold/10 text-gold'
+                    : 'text-white/50 hover:text-white/90 hover:bg-white/5'
+                }`
+              }
+            >
+              {label}
+            </NavLink>
+          ))}
+        </nav>
+
+        {/* Right side */}
+        <div className="ml-auto flex items-center gap-2.5">
+          {user ? (
+            <>
+              {/* Coin balance */}
+              <CoinBalance />
+
+              {/* Tier badge */}
+              <TierBadge tier={user.tier ?? 'bronze'} />
+
+              {/* Notifications */}
+              <NotificationBell />
+
+              {/* Avatar dropdown */}
+              <div className="relative group">
+                <button
+                  className="w-8 h-8 rounded-full bg-gold-gradient flex items-center justify-center text-sw-bg font-heading font-bold text-xs shrink-0 hover:shadow-gold-sm transition-shadow"
+                  aria-label="Account menu"
+                >
+                  {user.displayName?.[0]?.toUpperCase() ?? user.username?.[0]?.toUpperCase() ?? 'U'}
+                </button>
+
+                {/* Dropdown */}
+                <div className="absolute right-0 top-full mt-2 w-44 glass rounded-sw-lg py-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 shadow-card">
+                  <Link
+                    to="/dashboard"
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors"
+                  >
+                    <span className="text-base">📊</span> Dashboard
+                  </Link>
+                  <Link
+                    to="/settings"
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors"
+                  >
+                    <span className="text-base">⚙️</span> Settings
+                  </Link>
+                  <div className="divider my-1" />
+                  <button
+                    onClick={handleLogout}
+                    className="w-full text-left flex items-center gap-2 px-3 py-2 text-sm text-loss/80 hover:text-loss hover:bg-loss/5 transition-colors"
+                  >
+                    <span className="text-base">🚪</span> Log out
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <Link to="/auth/login" className="btn-ghost text-xs px-3 py-1.5">
+                Log in
+              </Link>
+              <Link to="/auth/register" className="btn-gold text-xs px-3 py-1.5">
+                Sign up
+              </Link>
+            </>
+          )}
+
+          {/* Mobile menu button */}
+          <button
+            className="md:hidden btn-ghost p-1.5"
+            onClick={() => setMobileOpen(v => !v)}
+            aria-label="Toggle menu"
+          >
+            <span className="text-lg">{mobileOpen ? '✕' : '☰'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile menu drawer */}
+      {mobileOpen && (
+        <div className="md:hidden bg-sw-card border-t border-sw-border px-4 py-3 animate-fade-in">
+          <nav className="flex flex-col gap-1">
+            {navItems.map(({ to, label, end }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end={end}
+                onClick={() => setMobileOpen(false)}
+                className={({ isActive }) =>
+                  `px-3 py-2 rounded-sw text-sm font-body transition-colors ${
+                    isActive
+                      ? 'bg-gold/10 text-gold'
+                      : 'text-white/60 hover:text-white hover:bg-white/5'
+                  }`
+                }
+              >
+                {label}
+              </NavLink>
+            ))}
+          </nav>
+        </div>
+      )}
+    </header>
+  );
+}

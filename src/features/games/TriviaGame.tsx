@@ -20,7 +20,10 @@ export default function TriviaGame({ celebrityId, onClose }: { celebrityId?: str
 
   const start = useMutation({
     mutationFn: () => startGameSession({ gameType: 'trivia', celebrityId }),
-    onSuccess: (session: any) => setSessionId(session.sessionId),
+    onSuccess: (data: any) => {
+      const id = data.session?.id || data.sessionId;
+      setSessionId(id);
+    },
     onError: (err) => {
       console.error('Start trivia error:', err);
       addNotification({
@@ -40,8 +43,8 @@ export default function TriviaGame({ celebrityId, onClose }: { celebrityId?: str
     mutationFn: () => completeGameSession(sessionId!, { answers }),
     onSuccess: (data: GameResult) => {
       setResult(data);
-      const earnedCoins = data.coinsEarned || data.consolationCoins || 0;
-      setBalance(balance + earnedCoins);
+      const earned = data.coinsEarned || data.consolationCoins || 0;
+      setBalance(balance + earned);
       addNotification({
         id: crypto.randomUUID(),
         type: 'game_result',

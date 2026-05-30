@@ -1,111 +1,121 @@
-import { useState, useEffect, useCallback } from 'react'
-import { useMutation } from '@tanstack/react-query'
-import { motion, AnimatePresence } from 'framer-motion'
-import { startGameSession, completeGameSession, type GameSession, type GameResult } from '../../api/game.api'
-import { useGameStore } from '../../stores/gameStore'
-import { useCoinStore } from '../../stores/coinStore'
-import { cn } from '../../lib/utils'
-import Spinner from '../../components/ui/Spinner'
+import { useState, useEffect, useCallback } from 'react';
+import { useMutation } from '@tanstack/react-query';
+import { motion, AnimatePresence } from 'framer-motion';
+import { startGameSession, completeGameSession, type GameSession, type GameResult } from '../../api/game.api';
+import { useGameStore } from '../../stores/gameStore';
+import { useCoinStore } from '../../stores/coinStore';
+import { cn } from '../../lib/utils';
+import Spinner from '../../components/ui/Spinner';
 
 interface Card {
-  id: number
-  emoji: string
-  matched: boolean
-  flipped: boolean
+  id: number;
+  emoji: string;
+  matched: boolean;
+  flipped: boolean;
 }
 
 interface MemoryGameProps {
-  celebritySlug: string
-  onComplete: () => void
+  celebritySlug: string;
+  onComplete: () => void;
 }
 
 const EMOJI_POOLS = [
-  ['🌟','🎵','🎬','🏆','💎','🎤','🎸','🎭'],
-  ['🦋','🌙','⚡','🔥','💫','🎯','🎪','🎠'],
-  ['🐉','🌺','🍀','🎰','🏅','🎲','🎡','🌈'],
-]
+  ['🌟', '🎵', '🎬', '🏆', '💎', '🎤', '🎸', '🎭'],
+  ['🦋', '🌙', '⚡', '🔥', '💫', '🎯', '🎪', '🎠'],
+  ['🐉', '🌺', '🍀', '🎰', '🏅', '🎲', '🎡', '🌈'],
+];
 
 function buildCards(pool: string[]): Card[] {
   return [...pool, ...pool]
     .sort(() => Math.random() - 0.5)
-    .map((emoji, i) => ({ id: i, emoji, matched: false, flipped: false }))
+    .map((emoji, i) => ({ id: i, emoji, matched: false, flipped: false }));
 }
 
 export default function MemoryGame({ celebritySlug, onComplete }: MemoryGameProps) {
-  const { setLastResult, incrementGamesPlayed } = useGameStore()
-  const { balance, setBalance } = useCoinStore()
+  const { setLastResult, incrementGamesPlayed } = useGameStore();
+  const { balance, setBalance } = useCoinStore();
 
-  const [cards, setCards]         = useState<Card[]>([])
-  const [flipped, setFlipped]     = useState<number[]>([])
-  const [moves, setMoves]         = useState(0)
-  const [locked, setLocked]       = useState(false)
-  const [gameOver, setGameOver]   = useState(false)
-  const [sessionId, setSessionId] = useState<string | null>(null)
-  const [starting, setStarting]   = useState(true)
-  const startedAt                 = { current: Date.now() }
+  const [cards, setCards] = useState<Card[]>([]);
+  const [flipped, setFlipped] = useState<number[]>([]);
+  const [moves, setMoves] = useState(0);
+  const [locked, setLocked] = useState(false);
+  const [gameOver, setGameOver] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [starting, setStarting] = useState(true);
+  const startedAt = { current: Date.now() };
 
   const startMutation = useMutation({
     mutationFn: () => startGameSession({ gameType: 'memory', celebrityId: celebritySlug }),
-    onSuccess: (data: GameSession) => {
-      setSessionId(data.sessionId)
-      const pool = EMOJI_POOLS[Math.floor(Math.random() * EMOJI_POOLS.length)]
-      setCards(buildCards(pool))
-      startedAt.current = Date.now()
-      setStarting(false)
+    onSuccess: (data: any) => {
+      const id = data.session?.id || data.sessionId;
+      setSessionId(id);
+      const pool = EMOJI_POOLS[Math.floor(Math.random() * EMOJI_POOLS.length)];
+      setCards(buildCards(pool));
+      startedAt.current = Date.now();
+      setStarting(false);
     },
-  })
+    onError: (err) => {
+      console.error('Start memory error:', err);
+      onComplete();
+    },
+  });
 
-  useEffect(() => { startMutation.mutate() }, [])
+  useEffect(() => {
+    startMutation.mutate();
+  }, []);
 
   const completeMutation = useMutation({
-    mutationFn: (timeMs: number) =>
-      completeGameSession(sessionId!, { completionTimeMs: timeMs }),
+    mutationFn: (timeMs: number) => completeGameSession(sessionId!, { completionTimeMs: timeMs }),
     onSuccess: (data: GameResult) => {
-      setLastResult(data)
-      incrementGamesPlayed()
-      const earned = data.coinsEarned + (data.consolationCoins ?? 0)
-      setBalance(balance + earned)
-      onComplete()
+      setLastResult(data);
+      incrementGamesPlayed();
+      const earned = data.coinsEarned + (data.consolationCoins ?? 0);
+      setBalance(balance + earned);
+      onComplete();
     },
-  })
+    onError: (err) => {
+      console.error('Complete memory error:', err);
+      onComplete();
+    },
+  });
 
   const handleFlip = useCallback(
     (id: number) => {
-      if (locked || gameOver) return
-      const card = cards.find(c => c.id === id)
-      if (!card || card.flipped || card.matched) return
+      if (locked || gameOver) return;
+      const card = cards.find(c => c.id === id);
+      if (!card || card.flipped || card.matched) return;
 
-      const newFlipped = [...flipped, id]
-      setCards(prev => prev.map(c => c.id === id ? { ...c, flipped: true } : c))
-      setFlipped(newFlipped)
+      const newFlipped = [...flipped, id];
+      setCards(prev => prev.map(c => c.id === id ? { ...c, flipped: true } : c));
+      setFlipped(newFlipped);
 
       if (newFlipped.length === 2) {
-        setLocked(true)
-        setMoves(m => m + 1)
-        const [a, b] = newFlipped.map(fid => cards.find(c => c.id === fid)!)
-        const isMatch = a.emoji === b.emoji
+        setLocked(true);
+        setMoves(m => m + 1);
+        const [a, b] = newFlipped.map(fid => cards.find(c => c.id === fid)!);
+        const isMatch = a.emoji === b.emoji;
 
         setTimeout(() => {
           setCards(prev =>
             prev.map(c =>
               newFlipped.includes(c.id) ? { ...c, matched: isMatch, flipped: isMatch } : c,
             ),
-          )
-          setFlipped([])
-          setLocked(false)
-        }, isMatch ? 300 : 900)
+          );
+          setFlipped([]);
+          setLocked(false);
+        }, isMatch ? 300 : 900);
       }
     },
     [locked, gameOver, flipped, cards],
-  )
+  );
 
   useEffect(() => {
-    if (cards.length === 0 || gameOver) return
+    if (cards.length === 0 || gameOver) return;
     if (cards.every(c => c.matched)) {
-      setGameOver(true)
-      completeMutation.mutate(Date.now() - startedAt.current)
+      setGameOver(true);
+      completeMutation.mutate(Date.now() - startedAt.current);
     }
-  }, [cards])
+  }, [cards]);
 
   if (starting) {
     return (
@@ -113,7 +123,7 @@ export default function MemoryGame({ celebritySlug, onComplete }: MemoryGameProp
         <Spinner />
         <p className="text-sm text-gray-400">Shuffling cards…</p>
       </div>
-    )
+    );
   }
 
   return (
@@ -134,8 +144,8 @@ export default function MemoryGame({ celebritySlug, onComplete }: MemoryGameProp
             disabled={card.matched || card.flipped || locked}
             className={cn(
               'aspect-square rounded-xl border text-2xl flex items-center justify-center transition-all duration-200 select-none',
-              card.matched  && 'border-win/40 bg-win/10 cursor-default',
-              card.flipped  && !card.matched && 'border-gold/40 bg-gold/10',
+              card.matched && 'border-win/40 bg-win/10 cursor-default',
+              card.flipped && !card.matched && 'border-gold/40 bg-gold/10',
               !card.flipped && !card.matched && 'border-sw-border bg-sw-card hover:border-sw-border-2 hover:bg-sw-card-2 cursor-pointer',
             )}
           >
@@ -158,5 +168,5 @@ export default function MemoryGame({ celebritySlug, onComplete }: MemoryGameProp
         <div className="flex justify-center py-4"><Spinner /></div>
       )}
     </div>
-  )
+  );
 }

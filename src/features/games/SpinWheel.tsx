@@ -18,16 +18,20 @@ export default function SpinWheel({ celebrityId, onClose }: SpinWheelProps) {
 
   const startMutation = useMutation({
     mutationFn: () => startGameSession({ gameType: 'spin', celebrityId }),
-    onSuccess: (data) => {
-      setSessionId(data.sessionId);
+    onSuccess: (data: any) => {
+      // Backend returns { success: true, session: { id, ... } }
+      const id = data.session?.id || data.sessionId;
+      console.log('Start game response:', data, 'extracted sessionId:', id);
+      setSessionId(id);
     },
-    onError: (err) => {
+    onError: (err: any) => {
       console.error('Start spin error:', err);
+      const msg = err?.response?.data?.message || err.message || 'Failed to start spin.';
       addNotification({
         id: crypto.randomUUID(),
         type: 'error',
         title: 'Error',
-        body: 'Failed to start spin. Please try again.',
+        body: msg,
         priority: 'normal',
         read: false,
         createdAt: new Date().toISOString(),
@@ -40,8 +44,8 @@ export default function SpinWheel({ celebrityId, onClose }: SpinWheelProps) {
     mutationFn: () => completeGameSession(sessionId!, {}),
     onSuccess: (data) => {
       setResult(data);
-      const earnedCoins = data.coinsEarned || data.consolationCoins || 0;
-      setBalance(balance + earnedCoins);
+      const earned = data.coinsEarned || data.consolationCoins || 0;
+      setBalance(balance + earned);
       addNotification({
         id: crypto.randomUUID(),
         type: 'game_result',
@@ -54,13 +58,14 @@ export default function SpinWheel({ celebrityId, onClose }: SpinWheelProps) {
         createdAt: new Date().toISOString(),
       });
     },
-    onError: (err) => {
+    onError: (err: any) => {
       console.error('Spin complete error:', err);
+      const msg = err?.response?.data?.message || err.message || 'Failed to complete spin.';
       addNotification({
         id: crypto.randomUUID(),
         type: 'error',
         title: 'Error',
-        body: 'Failed to complete spin. Please try again.',
+        body: msg,
         priority: 'normal',
         read: false,
         createdAt: new Date().toISOString(),
@@ -68,14 +73,6 @@ export default function SpinWheel({ celebrityId, onClose }: SpinWheelProps) {
       onClose();
     },
   });
-
-  const handleStart = () => {
-    startMutation.mutate();
-  };
-
-  const handleSpin = () => {
-    spinMutation.mutate();
-  };
 
   if (result) {
     return (
@@ -108,7 +105,9 @@ export default function SpinWheel({ celebrityId, onClose }: SpinWheelProps) {
         <div className="bg-sw-card rounded-2xl p-6 max-w-md w-full text-center">
           <h2 className="font-heading font-bold text-2xl text-gold mb-2">🎡 Spin Wheel</h2>
           <p className="text-white/50 text-sm mb-6">Spin to win coins and amazing prizes!</p>
-          <button onClick={handleStart} className="btn-gold w-full py-3 text-lg">Start Game</button>
+          <button onClick={() => startMutation.mutate()} className="btn-gold w-full py-3 text-lg">
+            Start Game
+          </button>
           <button onClick={onClose} className="btn-outline w-full mt-3">Cancel</button>
         </div>
       </div>
@@ -125,7 +124,7 @@ export default function SpinWheel({ celebrityId, onClose }: SpinWheelProps) {
         </div>
         <p className="text-white mb-4 font-medium">Ready to spin?</p>
         <button
-          onClick={handleSpin}
+          onClick={() => spinMutation.mutate()}
           disabled={spinMutation.isPending}
           className="btn-gold w-full py-3 text-lg disabled:opacity-50"
         >

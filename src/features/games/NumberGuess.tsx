@@ -35,9 +35,14 @@ export default function NumberGuess({ celebritySlug, onComplete }: NumberGuessPr
 
   const startMutation = useMutation({
     mutationFn: () => startGameSession({ gameType: 'number_guess', celebrityId: celebritySlug }),
-    onSuccess: (data: GameSession) => {
-      setSessionId(data.sessionId);
+    onSuccess: (data: any) => {
+      const id = data.session?.id || data.sessionId;
+      setSessionId(id);
       setStarting(false);
+    },
+    onError: (err) => {
+      console.error('Start number guess error:', err);
+      onComplete();
     },
   });
 
@@ -53,6 +58,10 @@ export default function NumberGuess({ celebritySlug, onComplete }: NumberGuessPr
       incrementGamesPlayed();
       const earned = data.coinsEarned + (data.consolationCoins ?? 0);
       setBalance(balance + earned);
+      onComplete();
+    },
+    onError: (err) => {
+      console.error('Complete number guess error:', err);
       onComplete();
     },
   });
@@ -129,7 +138,7 @@ export default function NumberGuess({ celebritySlug, onComplete }: NumberGuessPr
               transition={{ duration: 0.2 }}
               className={cn(
                 'flex items-center justify-between rounded-lg px-3 py-2 text-sm card border',
-                g.hint === 'correct' && 'border-win/30 bg-win/10'
+                g.hint === 'correct' && 'border-win/30 bg-win/10',
               )}
             >
               <span className="font-bold text-white">{g.value}</span>
@@ -138,7 +147,7 @@ export default function NumberGuess({ celebritySlug, onComplete }: NumberGuessPr
                   'text-xs',
                   g.hint === 'correct' && 'text-win',
                   g.hint === 'too-low' && 'text-amber-400',
-                  g.hint === 'too-high' && 'text-sky-400'
+                  g.hint === 'too-high' && 'text-sky-400',
                 )}
               >
                 {g.hint === 'correct' && '✓ Correct!'}

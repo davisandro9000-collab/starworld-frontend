@@ -53,13 +53,18 @@ export default function WordScramble({ celebritySlug, onComplete }: WordScramble
 
   const startMutation = useMutation({
     mutationFn: () => startGameSession({ gameType: 'word_scramble', celebrityId: celebritySlug }),
-    onSuccess: (data: GameSession) => {
-      setSessionId(data.sessionId);
+    onSuccess: (data: any) => {
+      const id = data.session?.id || data.sessionId;
+      setSessionId(id);
       const wordList: { word: string; hint: string }[] =
         (data.config as any)?.words ?? FALLBACK_PAIRS.sort(() => Math.random() - 0.5).slice(0, ROUND_COUNT);
       setRounds(wordList);
       setScrambled(scramble(wordList[0].word));
       setStarting(false);
+    },
+    onError: (err) => {
+      console.error('Start word scramble error:', err);
+      onComplete();
     },
   });
 
@@ -74,6 +79,10 @@ export default function WordScramble({ celebritySlug, onComplete }: WordScramble
       incrementGamesPlayed();
       const earned = data.coinsEarned + (data.consolationCoins ?? 0);
       setBalance(balance + earned);
+      onComplete();
+    },
+    onError: (err) => {
+      console.error('Complete word scramble error:', err);
       onComplete();
     },
   });
@@ -100,7 +109,7 @@ export default function WordScramble({ celebritySlug, onComplete }: WordScramble
         }
       }, 800);
     },
-    [roundIdx, rounds]
+    [roundIdx, rounds, completeMutation],
   );
 
   useEffect(() => {
@@ -153,7 +162,7 @@ export default function WordScramble({ celebritySlug, onComplete }: WordScramble
         <motion.div
           className={cn(
             'h-full rounded-full transition-colors',
-            timeLeft > 10 ? 'bg-gold' : timeLeft > 5 ? 'bg-amber-400' : 'bg-loss'
+            timeLeft > 10 ? 'bg-gold' : timeLeft > 5 ? 'bg-amber-400' : 'bg-loss',
           )}
           animate={{ width: `${(timeLeft / SECONDS_PER_ROUND) * 100}%` }}
           transition={{ duration: 0.5 }}
@@ -185,7 +194,7 @@ export default function WordScramble({ celebritySlug, onComplete }: WordScramble
             exit={{ opacity: 0 }}
             className={cn(
               'text-center text-sm font-bold py-2 rounded-lg',
-              feedback === 'correct' ? 'text-win bg-win/10' : 'text-loss bg-loss/10'
+              feedback === 'correct' ? 'text-win bg-win/10' : 'text-loss bg-loss/10',
             )}
           >
             {feedback === 'correct' ? `✓ Correct! +1 point` : `✗ The answer was "${current?.word}"`}

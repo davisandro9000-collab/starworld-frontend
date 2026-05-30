@@ -1,4 +1,3 @@
-// src/features/games/HangmanGame.tsx
 import { useState, useEffect, useCallback } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -86,12 +85,17 @@ export default function HangmanGame({ celebritySlug, onComplete }: HangmanGamePr
 
   const startMutation = useMutation({
     mutationFn: () => startGameSession({ gameType: 'hangman', celebrityId: celebritySlug }),
-    onSuccess: (data: GameSession) => {
-      setSessionId(data.sessionId);
+    onSuccess: (data: any) => {
+      const id = data.session?.id || data.sessionId;
+      setSessionId(id);
       const w: string = data.config?.scrambled ?? FALLBACK_WORDS[Math.floor(Math.random() * FALLBACK_WORDS.length)];
       setWord(w.toUpperCase().split(''));
       setHint(data.config?.hint ?? 'Celebrity related term');
       setStarting(false);
+    },
+    onError: (err) => {
+      console.error('Start hangman error:', err);
+      onComplete();
     },
   });
 
@@ -107,6 +111,10 @@ export default function HangmanGame({ celebritySlug, onComplete }: HangmanGamePr
       incrementGamesPlayed();
       const earned = data.coinsEarned + (data.consolationCoins ?? 0);
       setBalance(balance + earned);
+      onComplete();
+    },
+    onError: (err) => {
+      console.error('Complete hangman error:', err);
       onComplete();
     },
   });
@@ -131,7 +139,7 @@ export default function HangmanGame({ celebritySlug, onComplete }: HangmanGamePr
         completeMutation.mutate({ wrongLetters: nextWrong });
       }
     },
-    [gameOver, guessed, word, completeMutation]
+    [gameOver, guessed, word, completeMutation],
   );
 
   useEffect(() => {
@@ -200,7 +208,7 @@ export default function HangmanGame({ celebritySlug, onComplete }: HangmanGamePr
                   'w-9 h-9 rounded-lg text-sm font-bold transition-all',
                   !isGuessed && 'border border-sw-border bg-sw-card hover:border-gold hover:text-gold text-white',
                   isWrong && 'bg-loss/10 border border-loss/30 text-loss/50 cursor-not-allowed',
-                  isGuessed && !isWrong && 'bg-win/10 border border-win/30 text-win cursor-not-allowed'
+                  isGuessed && !isWrong && 'bg-win/10 border border-win/30 text-win cursor-not-allowed',
                 )}
               >
                 {l}

@@ -168,12 +168,12 @@ export default function ReferralsPage() {
                 <tr className="text-white/40 text-xs font-medium">
                   <th className="text-left py-3 px-2">Username</th>
                   <th className="text-left py-3 px-2">Status</th>
-                  <th className="text-left py-3 px-2">Deposited</th>
+                  <th className="text-left py-3 px-2">Bonus</th>
                   <th className="text-left py-3 px-2">Joined</th>
                 </tr>
               </thead>
               <tbody>
-                {list.map((ref: ReferralStats['list'][0]) => (
+                {list.map((ref) => (
                   <tr key={ref.id} className="border-b border-sw-border/30 hover:bg-white/5 transition-colors">
                     <td className="py-3 px-2 text-white text-sm">{ref.username}</td>
                     <td className="py-3 px-2">
@@ -184,7 +184,7 @@ export default function ReferralsPage() {
                       )}
                     </td>
                     <td className="py-3 px-2 text-white/70 text-sm">
-                      ${ref.totalDeposited.toFixed(2)}
+                      {ref.bonusCoins ? `${ref.bonusCoins} coins` : '—'}
                     </td>
                     <td className="py-3 px-2 text-white/40 text-xs">
                       {new Date(ref.joinedAt).toLocaleDateString()}

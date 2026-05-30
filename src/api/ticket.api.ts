@@ -17,6 +17,17 @@ export interface TicketEvent {
   currency: string;
 }
 
+export interface AuctionBid {
+  id: string;
+  exchangeId: string;
+  bidderId: string;
+  bidderUsername?: string;
+  bidCoins: number;
+  isWinning: boolean;
+  coinsReserved: boolean;
+  createdAt: string;
+}
+
 export interface ExchangeListing {
   id: string;
   sellerId: string;
@@ -35,6 +46,7 @@ export interface ExchangeListing {
   status: 'active' | 'sold' | 'cancelled' | 'expired';
   description?: string;
   ticketImageUrl?: string;
+  auctionBids?: AuctionBid[];
 }
 
 export interface CreateListingPayload {
@@ -59,10 +71,10 @@ export async function getTicketEvents(page = 1, limit = 20, celebrityId?: string
 
 export async function getExchangeListings(params: { type?: string; page?: number; limit?: number }) {
   const { data } = await api.get('/tickets/exchange', { params });
-  return data; // { listings, total, page, totalPages }
+  return data;
 }
 
-export async function getExchangeListing(id: string) {
+export async function getExchangeListing(id: string): Promise<ExchangeListing> {
   const { data } = await api.get(`/tickets/exchange/${id}`);
   return data.listing;
 }

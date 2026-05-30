@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { getCelebrity } from '../api/celebrity.api'
-import { getTicketEvents } from '../api/ticket.api'
+import { getTicketEvents, TicketEvent as ApiTicketEvent } from '../api/ticket.api'
 import TicketEventCard, { TicketEvent } from '../features/tickets/TicketEventCard'
 import Spinner from '../components/ui/Spinner'
 
@@ -14,6 +14,21 @@ const SORT_OPTIONS = [
   { id: 'price-desc', label: 'Price ↓'       },
 ] as const
 type SortId = typeof SORT_OPTIONS[number]['id']
+
+// Convert API event to card expected shape
+function convertEvent(apiEvent: ApiTicketEvent): TicketEvent {
+  return {
+    id: apiEvent.id,
+    name: apiEvent.eventName,
+    venue: apiEvent.venue || '',
+    city: apiEvent.city || '',
+    date: apiEvent.eventDate || new Date().toISOString(),
+    imageUrl: apiEvent.imageUrl,
+    minPrice: apiEvent.priceMin,
+    url: apiEvent.ticketUrl || '#',
+    category: 'Concerts',
+  }
+}
 
 export default function TicketEventsPage() {
   const { slug } = useParams<{ slug: string }>()
@@ -30,17 +45,20 @@ export default function TicketEventsPage() {
 
   const { data: eventsData, isLoading: eventsLoading } = useQuery({
     queryKey: ['ticket-events', slug],
-    queryFn: () => getTicketEvents({ celebrity: slug }),
+    queryFn: () => getTicketEvents(1, 20, slug),
     enabled: !!slug,
     staleTime: 2 * 60_000,
   })
 
-  // getTicketEvents may return an array directly or { events, total } — handle both
   const events: TicketEvent[] = useMemo(() => {
     if (!eventsData) return []
-    if (Array.isArray(eventsData)) return eventsData as TicketEvent[]
-    if ('events' in (eventsData as any)) return (eventsData as any).events as TicketEvent[]
-    return []
+    let apiEvents: ApiTicketEvent[] = []
+    if (Array.isArray(eventsData)) {
+      apiEvents = eventsData
+    } else if ('events' in eventsData) {
+      apiEvents = (eventsData as any).events
+    }
+    return apiEvents.map(convertEvent)
   }, [eventsData])
 
   const isLoading = celebLoading || eventsLoading
@@ -67,7 +85,6 @@ export default function TicketEventsPage() {
     return list
   }, [events, search, sort])
 
-  // Celebrity avatar — avatarUrl is the field name in the Celebrity type
   const celebAvatar = celeb?.avatarUrl
 
   return (

@@ -27,6 +27,7 @@ const GAMES = [
 ]
 
 function GamesTab({ onSelectGame }: { onSelectGame: (gameId: string) => void }) {
+  console.log('[GamesTab] rendered');
   return (
     <div className="space-y-6">
       <div className="card-gold p-5 rounded-sw-lg flex items-center justify-between gap-4">
@@ -35,7 +36,13 @@ function GamesTab({ onSelectGame }: { onSelectGame: (gameId: string) => void }) 
           <h3 className="font-heading font-bold text-lg text-gold mb-1">🎰 Daily Spin</h3>
           <p className="text-sm text-white/50">Spin the wheel for a chance to win cash, tickets &amp; prizes</p>
         </div>
-        <button className="btn-gold shrink-0 text-sm px-5 py-2.5" onClick={() => onSelectGame('spin')}>
+        <button
+          className="btn-gold shrink-0 text-sm px-5 py-2.5"
+          onClick={() => {
+            console.log('[Spin Now] button clicked, calling onSelectGame with "spin"');
+            onSelectGame('spin');
+          }}
+        >
           Spin Now
         </button>
       </div>
@@ -49,7 +56,10 @@ function GamesTab({ onSelectGame }: { onSelectGame: (gameId: string) => void }) 
           {GAMES.filter(g => g.id !== 'spin').map(game => (
             <button
               key={game.id}
-              onClick={() => onSelectGame(game.id)}
+              onClick={() => {
+                console.log(`[Game button] clicked: ${game.id}`);
+                onSelectGame(game.id);
+              }}
               className={cn(
                 'card-hover p-4 text-center rounded-sw-lg border bg-gradient-to-br',
                 game.color, game.border,
@@ -197,6 +207,7 @@ export default function CelebrityHubPage() {
   const user = useAuthStore((s) => s.user);
 
   console.log('🔍 CelebrityHubPage slug:', slug);
+  console.log('🔍 selectedGame:', selectedGame);
 
   const { data: celeb, isLoading, isError } = useQuery({
     queryKey: ['celebrity', slug],
@@ -238,7 +249,7 @@ export default function CelebrityHubPage() {
               {user && (
                 <div className="flex items-center gap-2 mt-2">
                   <span className="text-xxs text-white/30 font-body">Your tier</span>
-                  <TierBadge tier={user.tier.slug as 'bronze' | 'silver' | 'platinum'} />
+                  <TierBadge tier={user.tier.slug} />
                 </div>
               )}
             </div>
@@ -267,13 +278,25 @@ export default function CelebrityHubPage() {
       </div>
 
       <div className="page-content pt-5 pb-10">
-        {activeTab === 'games' && <GamesTab onSelectGame={setSelectedGame} />}
+        {activeTab === 'games' && <GamesTab onSelectGame={(gameId) => {
+          console.log('[Parent] onSelectGame called with:', gameId);
+          setSelectedGame(gameId);
+        }} />}
         {activeTab === 'bio' && <BioTab celeb={celeb} />}
         {activeTab === 'news' && <NewsTab slug={celeb.slug} />}
         {activeTab === 'tickets' && <TicketsTab slug={celeb.slug} celebName={celeb.name} />}
       </div>
 
-      {selectedGame && <GameModal gameType={selectedGame as any} celebrityId={celeb.id} onClose={() => setSelectedGame(null)} />}
+      {selectedGame && (
+        <GameModal
+          gameType={selectedGame as any}
+          celebrityId={celeb.id}
+          onClose={() => {
+            console.log('[GameModal] onClose called');
+            setSelectedGame(null);
+          }}
+        />
+      )}
     </div>
   );
 }

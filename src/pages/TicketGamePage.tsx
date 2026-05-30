@@ -1,7 +1,7 @@
-import { useCallback, useState } from 'react'
+// src/pages/TicketGamePage.tsx
 import { useParams, Navigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
-import { useTicketGame, type GamePhase, type GameStartPayload, type GameResultPayload } from '../hooks/useTicketGame'
+import { useTicketGame } from '../hooks/useTicketGame'
 import TicketGameUI from '../features/games/TicketGameUI'
 
 /**
@@ -19,24 +19,8 @@ export default function TicketGamePage() {
   const { sessionId } = useParams<{ sessionId: string }>()
   const { user } = useAuthStore()
 
-  const [phase, setPhase] = useState<GamePhase>('waiting')
-  const [gameStart, setGameStart] = useState<GameStartPayload | null>(null)
-  const [result, setResult] = useState<GameResultPayload | null>(null)
-
-  const handlePhaseChange = useCallback((p: GamePhase) => setPhase(p), [])
-  const handleStart = useCallback((payload: GameStartPayload) => setGameStart(payload), [])
-  const handleSignal = useCallback((_ts: number) => {
-    // Phase already set to 'tap' by the hook — nothing extra needed here
-  }, [])
-  const handleResult = useCallback((payload: GameResultPayload) => setResult(payload), [])
-
-  const { handleTap, hasTapped } = useTicketGame(
-    sessionId ?? '',
-    handlePhaseChange,
-    handleStart,
-    handleSignal,
-    handleResult
-  )
+  // The hook manages all state internally via socket events
+  const { phase, gameStart, result, hasTapped, tap } = useTicketGame(sessionId ?? '')
 
   // Guard: must have a session ID
   if (!sessionId) return <Navigate to="/dashboard" replace />
@@ -47,7 +31,7 @@ export default function TicketGamePage() {
       gameStart={gameStart}
       result={result}
       currentUserId={user?.id ?? ''}
-      onTap={handleTap}
+      onTap={tap}
       hasTapped={hasTapped}
     />
   )

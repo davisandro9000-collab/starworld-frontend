@@ -60,13 +60,13 @@ export default function NotificationBell() {
                     key={n.id}
                     onClick={() => markRead(n.id)}
                     className={`px-3 py-2.5 border-b border-sw-border/50 cursor-pointer transition-colors
-                      ${n.isRead ? 'hover:bg-white/3' : 'bg-gold/5 hover:bg-gold/8'}`}
+                      ${n.read ? 'hover:bg-white/3' : 'bg-gold/5 hover:bg-gold/8'}`}
                   >
                     <div className="flex items-start gap-2">
-                      {!n.isRead && (
+                      {!n.read && (
                         <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-gold shrink-0" />
                       )}
-                      <div className={!n.isRead ? '' : 'pl-3.5'}>
+                      <div className={!n.read ? '' : 'pl-3.5'}>
                         <p className="text-xs font-semibold text-white leading-snug">{n.title}</p>
                         {n.body && (
                           <p className="text-xxs text-white/50 mt-0.5 leading-snug">{n.body}</p>

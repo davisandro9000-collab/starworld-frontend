@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import { startGameSession, completeGameSession, type GameSession, type GameResult } from '../../api/game.api'
-import { useGameStore } from './gameStore'
+import { useGameStore } from '../../stores/gameStore'  // ✅ fixed
 import { useCoinStore } from '../../stores/index'
 import { cn } from '../../lib/utils'
 import Spinner from '../../components/ui/Spinner'

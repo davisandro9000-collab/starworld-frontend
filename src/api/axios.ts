@@ -3,12 +3,12 @@ import { API_BASE } from '../lib/constants';
 import { useAuthStore } from '../stores/authStore';
 
 export const api = axios.create({
-  baseURL: API_BASE,
-  withCredentials: true,          // ✅ send/receive cookies (refresh token)
+  baseURL: API_BASE,  // now '' (empty string)
+  withCredentials: true,
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Request interceptor – add access token from Zustand (memory)
+// Request interceptor – add access token from Zustand
 api.interceptors.request.use((config) => {
   const token = useAuthStore.getState().accessToken;
   if (token) {
@@ -17,7 +17,7 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Response interceptor – use cookie for refresh (no manual refreshToken)
+// Response interceptor – refresh token flow (refresh token in cookie)
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -25,7 +25,7 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       try {
-        // Backend reads refreshToken from cookie automatically
+        // Backend reads refreshToken from cookie
         const response = await api.post('/auth/refresh', {});
         const { accessToken } = response.data;
         useAuthStore.getState().setAccessToken(accessToken);

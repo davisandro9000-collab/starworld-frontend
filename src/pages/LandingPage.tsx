@@ -4,6 +4,9 @@ import { useQuery } from '@tanstack/react-query';
 import { getAllCelebrities } from '../api/celebrity.api';
 import Spinner from '../components/ui/Spinner';
 
+// Helper to generate a slug from name
+const generateSlug = (name: string) => name.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]/g, '');
+
 export default function LandingPage() {
   const { data: celebrities, isLoading, error } = useQuery({
     queryKey: ['celebrities'],
@@ -18,24 +21,29 @@ export default function LandingPage() {
     <div className="page-content py-10">
       <h1 className="font-heading font-bold text-3xl text-gold mb-6">Choose Your Star</h1>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {celebrities?.map((celeb) => (
-          <Link
-            key={celeb.id}
-            to={`/star/${celeb.slug}`}   // ✅ use slug, not id
-            className="card-hover rounded-xl overflow-hidden bg-sw-card border border-sw-border"
-          >
-            <div className="h-32 bg-sw-card-2 flex items-center justify-center">
-              {celeb.avatarUrl ? (
-                <img src={celeb.avatarUrl} alt={celeb.name} className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-5xl">⭐</span>
-              )}
-            </div>
-            <div className="p-3 text-center">
-              <p className="font-heading font-semibold text-white">{celeb.name}</p>
-            </div>
-          </Link>
-        ))}
+        {celebrities?.map((celeb) => {
+          // Use backend slug if exists, otherwise generate
+          const slug = celeb.slug || generateSlug(celeb.name);
+          console.log(`Link for ${celeb.name}: /star/${slug}`);
+          return (
+            <Link
+              key={celeb.id}
+              to={`/star/${slug}`}
+              className="card-hover rounded-xl overflow-hidden bg-sw-card border border-sw-border"
+            >
+              <div className="h-32 bg-sw-card-2 flex items-center justify-center">
+                {celeb.avatarUrl ? (
+                  <img src={celeb.avatarUrl} alt={celeb.name} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-5xl">⭐</span>
+                )}
+              </div>
+              <div className="p-3 text-center">
+                <p className="font-heading font-semibold text-white">{celeb.name}</p>
+              </div>
+            </Link>
+          );
+        })}
       </div>
     </div>
   );

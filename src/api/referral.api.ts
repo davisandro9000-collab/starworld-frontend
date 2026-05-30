@@ -1,15 +1,13 @@
-// src/api/referral.api.ts
 import { api } from './axios';
 
 export interface ReferralStats {
   referralCode: string;
-  payoutUnlocked: boolean;
   totalReferrals: number;
   activatedCount: number;
   pendingCount: number;
-  totalDepositsFromReferrals: number;
+  payoutUnlocked: boolean;
   referralUrl: string;
-  list: {
+  list: Array<{
     id: string;
     username: string;
     email: string;
@@ -17,16 +15,20 @@ export interface ReferralStats {
     activated: boolean;
     activatedAt: string | null;
     bonusCoins: number | null;
-    totalDeposited: number;
-  }[];
+  }>;
 }
 
-export const getReferralStats = async (): Promise<ReferralStats> => {
-  const response = await api.get('/referrals/my-stats');
-  return response.data;
-};
+export async function getReferralStats(): Promise<ReferralStats> {
+  const { data } = await api.get('/referrals/my-stats');
+  return data;
+}
 
-export const claimPayout = async (): Promise<{ success: boolean; coinsGranted: number }> => {
-  const response = await api.post('/referrals/claim-payout');
-  return response.data;
-};
+export async function createReferral(referralCode: string) {
+  const { data } = await api.post('/referrals/create', { referralCode });
+  return data.referral;
+}
+
+export async function claimPayout() {
+  const { data } = await api.post('/referrals/claim-payout');
+  return data;
+}

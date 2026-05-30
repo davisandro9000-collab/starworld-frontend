@@ -1,138 +1,98 @@
-import { api } from './axios'
+import { api } from './axios';
 
 export interface TicketEvent {
-  id: string
-  ticketmasterId: string
-  eventName: string
-  artistName: string
-  celebrityId?: string
-  venue: string
-  city: string
-  country: string
-  eventDate: string
-  imageUrl?: string
-  ticketUrl?: string
-  priceMin?: number
-  priceMax?: number
-  currency: string
+  id: string;
+  ticketmasterId: string;
+  eventName: string;
+  artistName: string;
+  celebrityId?: string;
+  venue: string | null;
+  city: string | null;
+  country: string | null;
+  eventDate: string | null;
+  imageUrl: string | null;
+  ticketUrl: string | null;
+  priceMin: number | null;
+  priceMax: number | null;
+  currency: string;
 }
 
 export interface ExchangeListing {
-  id: string
-  sellerId: string
-  sellerUsername: string
-  ticketListingId?: string
-  eventName: string
-  eventDate?: string
-  seatInfo?: string
-  quantity: number
-  listingType: 'fixed' | 'auction'
-  askingPriceCoins?: number
-  ticketImageUrl?: string
-  description?: string
-  status: 'active' | 'sold' | 'cancelled' | 'expired'
-  buyerId?: string
-  expiresAt: string
-  createdAt: string
-  currentBid?: number
-  bidCount?: number
-  auctionEndsAt?: string
-  reserveMet?: boolean
-}
-
-export interface AuctionBid {
-  id: string
-  exchangeId: string
-  bidderId: string
-  bidderUsername: string
-  bidCoins: number
-  isWinning: boolean
-  createdAt: string
+  id: string;
+  sellerId: string;
+  sellerUsername: string;
+  sellerAvatarUrl?: string;
+  eventName: string;
+  eventDate?: string;
+  seatInfo?: string;
+  quantity: number;
+  listingType: 'fixed' | 'auction';
+  askingPriceCoins?: number;
+  startingBidCoins?: number;
+  currentBid?: number;
+  bidCount?: number;
+  auctionEndsAt?: string;
+  status: 'active' | 'sold' | 'cancelled' | 'expired';
+  description?: string;
+  ticketImageUrl?: string;
 }
 
 export interface CreateListingPayload {
-  ticketListingId?: string
-  eventName: string
-  eventDate?: string
-  seatInfo?: string
-  quantity: number
-  listingType: 'fixed' | 'auction'
-  askingPriceCoins?: number
-  startingBidCoins?: number
-  reservePriceCoins?: number
-  auctionDurationHours?: number
-  description?: string
-  ticketImageUrl?: string
+  listingType: 'fixed' | 'auction';
+  eventName: string;
+  eventDate?: string;
+  seatInfo?: string;
+  quantity: number;
+  askingPriceCoins?: number;
+  startingBidCoins?: number;
+  auctionDurationHours?: number;
+  description?: string;
+  ticketImageUrl?: string;
 }
 
-// Events
-export async function getTicketEvents(params?: {
-  celebrity?: string; city?: string; page?: number
-}): Promise<{ events: TicketEvent[]; total: number }> {
-  const { data } = await api.get('/tickets/events', { params })
-  return data
+export async function getTicketEvents(page = 1, limit = 20, celebrityId?: string): Promise<{ events: TicketEvent[], total: number }> {
+  const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+  if (celebrityId) params.append('celebrityId', celebrityId);
+  const { data } = await api.get(`/tickets/events?${params.toString()}`);
+  return data;
 }
 
-export async function getTicketEvent(id: string): Promise<TicketEvent> {
-  const { data } = await api.get(`/tickets/events/${id}`)
-  return data
+export async function getExchangeListings(params: { type?: string; page?: number; limit?: number }) {
+  const { data } = await api.get('/tickets/exchange', { params });
+  return data; // { listings, total, page, totalPages }
 }
 
-// Exchange listings
-export async function getExchangeListings(params?: {
-  type?: 'fixed' | 'auction' | 'all'; status?: string; page?: number; limit?: number
-}): Promise<{ listings: ExchangeListing[]; total: number; page: number }> {
-  const { data } = await api.get('/tickets/exchange', { params })
-  return data
+export async function getExchangeListing(id: string) {
+  const { data } = await api.get(`/tickets/exchange/${id}`);
+  return data.listing;
 }
 
-export async function getExchangeListing(id: string): Promise<ExchangeListing> {
-  const { data } = await api.get(`/tickets/exchange/${id}`)
-  return data
+export async function createListing(payload: CreateListingPayload) {
+  const { data } = await api.post('/tickets/exchange', payload);
+  return data.listing;
 }
 
-export async function createListing(payload: CreateListingPayload): Promise<ExchangeListing> {
-  const { data } = await api.post('/tickets/exchange', payload)
-  return data
+export async function buyFixedPrice(exchangeId: string) {
+  const { data } = await api.post(`/tickets/exchange/${exchangeId}/buy`, {});
+  return data;
 }
 
-export async function buyListing(id: string): Promise<{ success: boolean; message: string }> {
-  const { data } = await api.post(`/tickets/exchange/${id}/buy`)
-  return data
+export async function placeBid(exchangeId: string, bidCoins: number) {
+  const { data } = await api.post(`/tickets/exchange/${exchangeId}/bid`, { bidCoins });
+  return data.bid;
 }
 
-export async function cancelListing(id: string): Promise<void> {
-  await api.delete(`/tickets/exchange/${id}`)
+export async function cancelListing(exchangeId: string) {
+  const { data } = await api.delete(`/tickets/exchange/${exchangeId}`);
+  return data;
 }
 
-// Auction
-export async function placeBid(exchangeId: string, bidCoins: number): Promise<AuctionBid> {
-  const { data } = await api.post(`/tickets/exchange/${exchangeId}/bid`, { bidCoins })
-  return data
+export async function getMyListings() {
+  const { data } = await api.get('/tickets/my-listings');
+  return data.listings;
 }
 
-export async function getAuctionBids(exchangeId: string): Promise<AuctionBid[]> {
-  const { data } = await api.get(`/tickets/exchange/${exchangeId}/bids`)
-  return data
-}
-
-// My listings / purchases
-export async function getMyListings(): Promise<ExchangeListing[]> {
-  const { data } = await api.get('/tickets/my-listings')
-  return data
-}
-
-export async function getMyPurchases(): Promise<ExchangeListing[]> {
-  const { data } = await api.get('/tickets/my-purchases')
-  return data
-}
-
-// Ticket game
-export async function enterTicketGame(offerId: string): Promise<{ sessionId: string }> {
-  const { data } = await api.post('/tickets/game/enter', { offerId })
-  return data
-}
-
-export async function sendTap(sessionId: string, clientTimestamp: number): Promise<void> {
-  await api.post(`/tickets/game/${sessionId}/tap`, { clientTimestamp })
+export async function getMyPurchases() {
+  const { data } = await api.get('/tickets/my-purchases');
+  return data.purchases;
 }

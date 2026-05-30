@@ -1,7 +1,8 @@
+// src/pages/CelebrityHubPage.tsx
 import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { getCelebrity, getCelebNews } from '../api/celebrity.api'
+import { getCelebrity, getCelebNews, getCelebEvents, type Celebrity } from '../api/celebrity.api'
 import Spinner from '../components/ui/Spinner'
 import TierBadge from '../components/ui/TierBadge'
 import { useAuthStore } from '../stores/authStore'
@@ -83,7 +84,7 @@ function GamesTab({ onSelectGame }: { onSelectGame: (gameId: string) => void }) 
   )
 }
 
-function BioTab({ celeb }: { celeb: { name: string; genre?: string; bio?: string } }) {
+function BioTab({ celeb }: { celeb: Celebrity }) {
   return (
     <div className="space-y-4">
       <div className="card p-5 rounded-sw-lg">
@@ -116,32 +117,40 @@ function BioTab({ celeb }: { celeb: { name: string; genre?: string; bio?: string
 }
 
 function NewsTab({ slug }: { slug: string }) {
-  const { data: news, isLoading } = useQuery({
+  const { data: articles, isLoading } = useQuery({
     queryKey: ['celeb-news', slug],
     queryFn: () => getCelebNews(slug),
-    staleTime: 1000 * 60 * 15,
-  })
+    staleTime: 15 * 60 * 1000,
+  });
 
-  if (isLoading) return <div className="flex justify-center py-10"><Spinner size="md" /></div>
-  if (!news?.length) return <div className="card p-8 text-center rounded-sw-lg"><span className="text-3xl block mb-3">📰</span><p className="text-white/40 text-sm font-body">No news articles yet. Check back soon.</p></div>
+  if (isLoading) return <div className="flex justify-center py-10"><Spinner size="md" /></div>;
+  if (!articles || articles.length === 0) {
+    return <div className="card p-8 text-center rounded-sw-lg"><span className="text-3xl block mb-3">📰</span><p className="text-white/40 text-sm font-body">No news articles yet. Check back soon.</p></div>;
+  }
 
   return (
     <div className="space-y-3">
-      {news.map(article => (
-        <a key={article.id} href={article.sourceUrl ?? '#'} target="_blank" rel="noopener noreferrer" className="card-hover p-4 rounded-sw-lg flex gap-4 items-start group">
+      {articles.map((article, idx) => (
+        <a key={idx} href={article.url} target="_blank" rel="noopener noreferrer" className="card-hover p-4 rounded-sw-lg flex gap-4 items-start group">
           {article.imageUrl && <img src={article.imageUrl} alt="" className="w-16 h-16 rounded-sw object-cover shrink-0 bg-sw-card-2" />}
           <div className="min-w-0">
-            <p className="font-heading font-semibold text-sm text-white group-hover:text-gold transition-colors leading-snug line-clamp-2">{article.headline}</p>
-            {article.summary && <p className="text-xxs text-white/40 mt-1 font-body line-clamp-2 leading-relaxed">{article.summary}</p>}
+            <p className="font-heading font-semibold text-sm text-white group-hover:text-gold transition-colors leading-snug line-clamp-2">{article.title}</p>
+            <p className="text-xxs text-white/40 mt-1 font-body line-clamp-2 leading-relaxed">{article.description}</p>
             <p className="text-xxs text-white/25 mt-1.5 font-body">{new Date(article.publishedAt).toLocaleDateString()}</p>
           </div>
         </a>
       ))}
     </div>
-  )
+  );
 }
 
 function TicketsTab({ slug, celebName }: { slug: string; celebName: string }) {
+  const { data: events, isLoading } = useQuery({
+    queryKey: ['celeb-events', slug],
+    queryFn: () => getCelebEvents(slug),
+    staleTime: 2 * 60 * 60 * 1000,
+  });
+
   return (
     <div className="space-y-4">
       <div className="card-gold p-5 rounded-sw-lg text-center">
@@ -153,17 +162,27 @@ function TicketsTab({ slug, celebName }: { slug: string; celebName: string }) {
           <Link to="/marketplace" className="btn-outline text-sm px-4 py-2">P2P Marketplace</Link>
         </div>
       </div>
-      <div className="card p-4 rounded-sw-lg border border-cyan/20 bg-gradient-to-br from-cyan/5 to-transparent">
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">⚡</span>
-          <div>
-            <p className="font-heading font-semibold text-sm text-cyan">Ticket Game</p>
-            <p className="text-xxs text-white/40 font-body">Win a cash prize in any game → wager it in a PvP fastest-finger duel for real tickets</p>
-          </div>
+
+      {isLoading ? (
+        <div className="flex justify-center py-6"><Spinner size="md" /></div>
+      ) : events && events.length > 0 ? (
+        <div className="space-y-2 max-h-96 overflow-y-auto">
+          {events.slice(0, 5).map((event) => (
+            <div key={event.id} className="card p-3 rounded-sw flex items-center gap-3">
+              {event.imageUrl && <img src={event.imageUrl} alt="" className="w-12 h-12 rounded object-cover" />}
+              <div className="flex-1 min-w-0">
+                <p className="font-heading font-semibold text-sm text-white truncate">{event.eventName}</p>
+                <p className="text-xxs text-white/40">{event.venue ? `${event.venue} · ` : ''}{event.city}</p>
+              </div>
+              <a href={event.ticketUrl || '#'} target="_blank" rel="noopener noreferrer" className="text-xs text-gold border border-gold/30 rounded-full px-2 py-0.5 hover:bg-gold/10">Tickets</a>
+            </div>
+          ))}
         </div>
-      </div>
+      ) : (
+        <div className="card p-8 text-center"><p className="text-white/40 text-sm">No upcoming events found.</p></div>
+      )}
     </div>
-  )
+  );
 }
 
 export default function CelebrityHubPage() {

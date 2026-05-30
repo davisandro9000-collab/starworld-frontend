@@ -1,10 +1,11 @@
-import { useQuery } from '@tanstack/react-query'
-import { getReferrals } from '../api/user.api'
+// src/hooks/useReferrals.ts
+import { useQuery } from '@tanstack/react-query';
+import { getReferralStats, type ReferralStats } from '../api/referral.api';
 
 export function useReferrals() {
-  return useQuery({
+  return useQuery<ReferralStats>({
     queryKey: ['referrals'],
-    queryFn: getReferrals,
-    staleTime: 60_000,
-  })
+    queryFn: getReferralStats,
+    staleTime: 5 * 60 * 1000,
+  });
 }

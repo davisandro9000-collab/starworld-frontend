@@ -1,48 +1,57 @@
-import { api } from './axios'
+import { api } from './axios';
 
 export interface Celebrity {
-  id: string
-  slug: string
-  name: string
-  genre?: string
-  bio?: string
-  avatarUrl?: string
-  bannerUrl?: string
-  isPublished: boolean
+  id: string;
+  name: string;
+  slug: string;
+  bio: string | null;
+  genre?: string;
+  avatarUrl: string | null;
+  bannerUrl: string | null;
+  isPublished: boolean;
 }
 
-export interface CelebrityNews {
-  id: string
-  headline: string
-  summary?: string
-  imageUrl?: string
-  sourceUrl?: string
-  publishedAt: string
+export interface NewsArticle {
+  title: string;
+  description: string;
+  url: string;
+  imageUrl: string | null;
+  publishedAt: string;
+  source: string;
 }
 
-export interface TriviaQuestion {
-  id: string
-  question: string
-  options: string[]
-  difficulty: 'easy' | 'medium' | 'hard'
+export interface Event {
+  id: string;
+  ticketmasterId: string;
+  eventName: string;
+  artistName: string;
+  venue: string | null;
+  city: string | null;
+  country: string | null;
+  eventDate: string | null;
+  imageUrl: string | null;
+  ticketUrl: string | null;
+  priceMin: number | null;
+  priceMax: number | null;
+  currency: string;
 }
 
-export const getCelebrities = async (): Promise<Celebrity[]> => {
-  const { data } = await api.get('/celebrities')
-  return data
+export async function getAllCelebrities(): Promise<Celebrity[]> {
+  const { data } = await api.get('/celebrities');
+  return data.celebrities;
 }
 
-export const getCelebrity = async (slug: string): Promise<Celebrity> => {
-  const { data } = await api.get(`/celebrities/${slug}`)
-  return data
+export async function getCelebrity(slug: string): Promise<Celebrity> {
+  const { data } = await api.get(`/celebrities/${slug}`);
+  return data.celebrity;
 }
 
-export const getCelebNews = async (slug: string): Promise<CelebrityNews[]> => {
-  const { data } = await api.get(`/celebrities/${slug}/news`)
-  return data
+export async function getCelebNews(slug: string): Promise<NewsArticle[]> {
+  const { data } = await api.get(`/celebrities/${slug}/news`);
+  return data.articles || [];
 }
 
-export const getCelebTrivia = async (slug: string): Promise<TriviaQuestion[]> => {
-  const { data } = await api.get(`/celebrities/${slug}/trivia`)
-  return data
+export async function getCelebEvents(slug: string): Promise<Event[]> {
+  const { data } = await api.get(`/celebrities/${slug}/events`);
+  return data.events || [];
 }

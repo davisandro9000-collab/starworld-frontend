@@ -8,54 +8,43 @@ export const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Helper to get token – first from store, then from localStorage
 function getToken(): string | null {
-  // Try Zustand store first
   const storeToken = useAuthStore.getState().accessToken;
   if (storeToken) return storeToken;
-
-  // Fallback: read from known localStorage keys
-  const keys = ['auth-storage', 'starworld-auth', 'user-storage'];
-  for (const key of keys) {
-    const raw = localStorage.getItem(key);
-    if (raw) {
-      try {
-        const parsed = JSON.parse(raw);
-        const token = parsed?.state?.accessToken || parsed?.accessToken;
-        if (token) return token;
-      } catch (e) {}
-    }
+  const raw = localStorage.getItem('auth-storage');
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw);
+      return parsed?.state?.accessToken || parsed?.accessToken || null;
+    } catch {}
   }
   return null;
 }
 
 api.interceptors.request.use((config) => {
   const token = getToken();
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
+  if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
-// Response interceptor (refresh token) – unchanged
 api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
+  (res) => res,
+  async (err) => {
+    const original = err.config;
+    if (err.response?.status === 401 && !original._retry) {
+      original._retry = true;
       try {
-        const response = await api.post('/auth/refresh', {});
-        const { accessToken } = response.data;
+        const { data } = await api.post('/auth/refresh', {});
+        const { accessToken } = data;
         useAuthStore.getState().setAccessToken(accessToken);
-        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-        return api(originalRequest);
-      } catch (refreshError) {
+        original.headers.Authorization = `Bearer ${accessToken}`;
+        return api(original);
+      } catch {
         useAuthStore.getState().logout();
         window.location.href = '/login';
-        return Promise.reject(refreshError);
+        return Promise.reject(err);
       }
     }
-    return Promise.reject(error);
+    return Promise.reject(err);
   }
 );

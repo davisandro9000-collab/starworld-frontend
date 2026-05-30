@@ -1,5 +1,3 @@
-// src/components/ui/TierBadge.tsx
-
 type TierSlug = 'bronze' | 'silver' | 'platinum';
 
 const TIER_STYLES: Record<TierSlug, string> = {
@@ -15,19 +13,14 @@ const TIER_ICONS: Record<TierSlug, string> = {
 };
 
 export interface TierBadgeProps {
-  /**
-   * Can be a string ('bronze', 'silver', 'platinum')
-   * or an object returned by the backend: { slug: 'bronze', name: 'Bronze', colorHex: '#CD7F32' }
-   */
-  tier: TierSlug | { slug?: TierSlug; name?: string; colorHex?: string };
+  tier: TierSlug | { slug?: TierSlug; name?: string; colorHex?: string } | string;
   showDot?: boolean;
 }
 
 export default function TierBadge({ tier, showDot = false }: TierBadgeProps) {
-  // Normalise to a slug
   let slug: TierSlug = 'bronze';
   if (typeof tier === 'string') {
-    slug = tier as TierSlug;
+    slug = (tier as TierSlug) || 'bronze';
   } else {
     slug = (tier.slug as TierSlug) || 'bronze';
   }

@@ -1,4 +1,3 @@
-// src/pages/CelebrityHubPage.tsx
 import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -197,7 +196,6 @@ export default function CelebrityHubPage() {
   const [selectedGame, setSelectedGame] = useState<string | null>(null);
   const user = useAuthStore((s) => s.user);
 
-  // Debug: log slug to console
   console.log('🔍 CelebrityHubPage slug:', slug);
 
   const { data: celeb, isLoading, isError } = useQuery({
@@ -221,7 +219,6 @@ export default function CelebrityHubPage() {
 
   return (
     <div className="min-h-screen">
-      {/* Hero banner */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-sw-card to-sw-bg" aria-hidden="true">
           {celeb.bannerUrl && <img src={celeb.bannerUrl} alt="" className="w-full h-full object-cover opacity-20" />}
@@ -241,7 +238,7 @@ export default function CelebrityHubPage() {
               {user && (
                 <div className="flex items-center gap-2 mt-2">
                   <span className="text-xxs text-white/30 font-body">Your tier</span>
-                  <TierBadge tier={user.tier} />
+                  <TierBadge tier={user.tier.slug as 'bronze' | 'silver' | 'platinum'} />
                 </div>
               )}
             </div>
@@ -249,7 +246,6 @@ export default function CelebrityHubPage() {
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="sticky top-[56px] z-40 bg-sw-bg border-b border-sw-border">
         <div className="max-w-5xl mx-auto px-4">
           <div className="flex gap-1 overflow-x-auto scrollbar-none py-1">
@@ -270,7 +266,6 @@ export default function CelebrityHubPage() {
         </div>
       </div>
 
-      {/* Tab content */}
       <div className="page-content pt-5 pb-10">
         {activeTab === 'games' && <GamesTab onSelectGame={setSelectedGame} />}
         {activeTab === 'bio' && <BioTab celeb={celeb} />}
@@ -278,7 +273,6 @@ export default function CelebrityHubPage() {
         {activeTab === 'tickets' && <TicketsTab slug={celeb.slug} celebName={celeb.name} />}
       </div>
 
-      {/* Game modal */}
       {selectedGame && <GameModal gameType={selectedGame as any} celebrityId={celeb.id} onClose={() => setSelectedGame(null)} />}
     </div>
   );

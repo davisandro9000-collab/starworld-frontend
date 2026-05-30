@@ -1,43 +1,50 @@
-// src/stores/authStore.ts
-import { create } from 'zustand'
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
-export interface TierInfo {
-  slug: 'bronze' | 'silver' | 'platinum'
-  name: string
-  colorHex: string
-}
-
-export interface AppUser {
-  id: string
-  username: string
-  email: string
-  displayName?: string
-  avatarUrl?: string
-  tier: TierInfo      // ✅ now an object with slug, name, colorHex
-  coinBalance: number
-  payoutUnlocked: boolean
-  totalReferrals: number
-  referralCode: string
-  emailVerified: boolean
-  createdAt?: string
+export interface User {
+  id: string;
+  username: string;
+  email: string;
+  displayName?: string;
+  avatarUrl?: string;
+  coinBalance: number;
+  tier: {
+    id: string;
+    slug: string;
+    name: string;
+    colorHex: string;
+  };
+  referralCode?: string;
+  payoutUnlocked: boolean;
+  totalReferrals: number;
 }
 
 interface AuthState {
-  user: AppUser | null
-  accessToken: string | null
-  isLoading: boolean
-  setUser: (user: AppUser) => void
-  setAccessToken: (token: string) => void
-  logout: () => void
-  setLoading: (v: boolean) => void
+  user: User | null;
+  accessToken: string | null;
+  isLoading: boolean;
+  setUser: (user: User | null) => void;
+  setAccessToken: (token: string | null) => void;
+  setLoading: (loading: boolean) => void;
+  logout: () => void;
 }
 
-export const useAuthStore = create<AuthState>()((set) => ({
-  user: null,
-  accessToken: null,
-  isLoading: false,
-  setUser:         (user)  => set({ user }),
-  setAccessToken:  (token) => set({ accessToken: token }),
-  logout:          ()      => set({ user: null, accessToken: null }),
-  setLoading:      (v)     => set({ isLoading: v }),
-}))
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set) => ({
+      user: null,
+      accessToken: null,
+      isLoading: false,
+      setUser: (user) => set({ user }),
+      setAccessToken: (accessToken) => set({ accessToken }),
+      setLoading: (isLoading) => set({ isLoading }),
+      logout: () => {
+        set({ user: null, accessToken: null });
+        localStorage.removeItem('auth-storage');
+      },
+    }),
+    {
+      name: 'auth-storage',
+    }
+  )
+);

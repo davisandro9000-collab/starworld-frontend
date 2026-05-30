@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import { startGameSession, completeGameSession, type GameSession, type GameResult } from '../../api/game.api'
-import { useGameStore } from '../../stores/gameStore'  // ✅ fixed
-import { useCoinStore } from '../../stores/index'
+import { useGameStore } from '../../stores/gameStore'
+import { useCoinStore } from '../../stores/coinStore'
 import { cn } from '../../lib/utils'
 import Spinner from '../../components/ui/Spinner'
 
@@ -33,7 +33,7 @@ function buildCards(pool: string[]): Card[] {
 
 export default function MemoryGame({ celebritySlug, onComplete }: MemoryGameProps) {
   const { setLastResult, incrementGamesPlayed } = useGameStore()
-  const { setBalance } = useCoinStore()
+  const { balance, setBalance } = useCoinStore()
 
   const [cards, setCards]         = useState<Card[]>([])
   const [flipped, setFlipped]     = useState<number[]>([])
@@ -55,7 +55,7 @@ export default function MemoryGame({ celebritySlug, onComplete }: MemoryGameProp
     },
   })
 
-  useEffect(() => { startMutation.mutate() }, []) // eslint-disable-line
+  useEffect(() => { startMutation.mutate() }, [])
 
   const completeMutation = useMutation({
     mutationFn: (timeMs: number) =>
@@ -63,7 +63,8 @@ export default function MemoryGame({ celebritySlug, onComplete }: MemoryGameProp
     onSuccess: (data: GameResult) => {
       setLastResult(data)
       incrementGamesPlayed()
-      if ((data as any).newBalance != null) setBalance((data as any).newBalance)
+      const earned = data.coinsEarned + (data.consolationCoins ?? 0)
+      setBalance(balance + earned)
       onComplete()
     },
   })
@@ -98,14 +99,13 @@ export default function MemoryGame({ celebritySlug, onComplete }: MemoryGameProp
     [locked, gameOver, flipped, cards],
   )
 
-  // Check win after cards update
   useEffect(() => {
     if (cards.length === 0 || gameOver) return
     if (cards.every(c => c.matched)) {
       setGameOver(true)
       completeMutation.mutate(Date.now() - startedAt.current)
     }
-  }, [cards]) // eslint-disable-line
+  }, [cards])
 
   if (starting) {
     return (

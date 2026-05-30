@@ -3,8 +3,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { startGameSession, completeGameSession, type GameSession, type GameResult } from '../../api/game.api';
-import { useGameStore } from '../../stores/gameStore';        // ✅ fixed path
-import { useCoinStore } from '../../stores/coinStore';        // ✅ adjust if named differently
+import { useGameStore } from '../../stores/gameStore';
+import { useCoinStore } from '../../stores/coinStore';
 import { cn } from '../../lib/utils';
 import Spinner from '../../components/ui/Spinner';
 
@@ -75,7 +75,7 @@ const HANGMAN_STAGES = [
 
 export default function HangmanGame({ celebritySlug, onComplete }: HangmanGameProps) {
   const { setLastResult, incrementGamesPlayed } = useGameStore();
-  const { setBalance } = useCoinStore();
+  const { balance, setBalance } = useCoinStore();
 
   const [starting, setStarting] = useState(true);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -97,7 +97,6 @@ export default function HangmanGame({ celebritySlug, onComplete }: HangmanGamePr
 
   useEffect(() => {
     startMutation.mutate();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const completeMutation = useMutation({
@@ -106,7 +105,8 @@ export default function HangmanGame({ celebritySlug, onComplete }: HangmanGamePr
     onSuccess: (data: GameResult) => {
       setLastResult(data);
       incrementGamesPlayed();
-      if ((data as any).newBalance != null) setBalance((data as any).newBalance);
+      const earned = data.coinsEarned + (data.consolationCoins ?? 0);
+      setBalance(balance + earned);
       onComplete();
     },
   });

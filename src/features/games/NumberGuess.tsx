@@ -3,7 +3,7 @@ import { useMutation } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { startGameSession, completeGameSession, type GameSession, type GameResult } from '../../api/game.api';
 import { useGameStore } from '../../stores/gameStore';
-import { useAuthStore } from '../../stores/authStore';
+import { useCoinStore } from '../../stores/coinStore';
 import { cn } from '../../lib/utils';
 import Spinner from '../../components/ui/Spinner';
 
@@ -22,7 +22,7 @@ function getHint(guess: number, target: number): 'too-low' | 'too-high' | 'corre
 
 export default function NumberGuess({ celebritySlug, onComplete }: NumberGuessProps) {
   const { setLastResult, incrementGamesPlayed } = useGameStore();
-  const { user, setUser } = useAuthStore();
+  const { balance, setBalance } = useCoinStore();
 
   const [starting, setStarting] = useState(true);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -51,10 +51,8 @@ export default function NumberGuess({ celebritySlug, onComplete }: NumberGuessPr
     onSuccess: (data: GameResult) => {
       setLastResult(data);
       incrementGamesPlayed();
-      if (user) {
-        const earned = data.coinsEarned + (data.consolationCoins ?? 0);
-        setUser({ ...user, coinBalance: user.coinBalance + earned });
-      }
+      const earned = data.coinsEarned + (data.consolationCoins ?? 0);
+      setBalance(balance + earned);
       onComplete();
     },
   });

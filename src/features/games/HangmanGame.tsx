@@ -1,150 +1,147 @@
-import { useState, useEffect, useCallback } from 'react'
-import { useMutation } from '@tanstack/react-query'
-import { motion, AnimatePresence } from 'framer-motion'
-import { startGameSession, completeGameSession, type GameSession, type GameResult } from '../../api/game.api'
-import { useGameStore } from './gameStore'
-import { useCoinStore } from '../../stores/index'
-import { cn } from '../../lib/utils'
-import Spinner from '../../components/ui/Spinner'
+// src/features/games/HangmanGame.tsx
+import { useState, useEffect, useCallback } from 'react';
+import { useMutation } from '@tanstack/react-query';
+import { motion, AnimatePresence } from 'framer-motion';
+import { startGameSession, completeGameSession, type GameSession, type GameResult } from '../../api/game.api';
+import { useGameStore } from '../../stores/gameStore';        // ✅ fixed path
+import { useCoinStore } from '../../stores/coinStore';        // ✅ adjust if named differently
+import { cn } from '../../lib/utils';
+import Spinner from '../../components/ui/Spinner';
 
 interface HangmanGameProps {
-  celebritySlug: string
-  onComplete: () => void
+  celebritySlug: string;
+  onComplete: () => void;
 }
 
 const FALLBACK_WORDS = [
   'ALBUM', 'CONCERT', 'STADIUM', 'PLATINUM', 'BILLBOARD',
   'GRAMMY', 'TOURING', 'FANCLUB', 'HEADLINE', 'FESTIVAL',
-]
+];
 
-const MAX_WRONG = 6
-const ALPHABET  = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
+const MAX_WRONG = 6;
+const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
 const HANGMAN_STAGES = [
-  `
-  +---+
+  `  +---+
   |   |
       |
       |
       |
       |
 =========`,
-  `
-  +---+
+  `  +---+
   |   |
   O   |
       |
       |
       |
 =========`,
-  `
-  +---+
+  `  +---+
   |   |
   O   |
   |   |
       |
       |
 =========`,
-  `
-  +---+
+  `  +---+
   |   |
   O   |
  /|   |
       |
       |
 =========`,
-  `
-  +---+
+  `  +---+
   |   |
   O   |
  /|\\  |
       |
       |
 =========`,
-  `
-  +---+
+  `  +---+
   |   |
   O   |
  /|\\  |
  /    |
       |
 =========`,
-  `
-  +---+
+  `  +---+
   |   |
   O   |
  /|\\  |
  / \\  |
       |
 =========`,
-]
+];
 
 export default function HangmanGame({ celebritySlug, onComplete }: HangmanGameProps) {
-  const { setLastResult, incrementGamesPlayed } = useGameStore()
-  const { setBalance } = useCoinStore()
+  const { setLastResult, incrementGamesPlayed } = useGameStore();
+  const { setBalance } = useCoinStore();
 
-  const [starting, setStarting]   = useState(true)
-  const [sessionId, setSessionId] = useState<string | null>(null)
-  const [word, setWord]           = useState<string[]>([])
-  const [hint, setHint]           = useState('')
-  const [guessed, setGuessed]     = useState<Set<string>>(new Set())
-  const [gameOver, setGameOver]   = useState(false)
+  const [starting, setStarting] = useState(true);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [word, setWord] = useState<string[]>([]);
+  const [hint, setHint] = useState('');
+  const [guessed, setGuessed] = useState<Set<string>>(new Set());
+  const [gameOver, setGameOver] = useState(false);
 
   const startMutation = useMutation({
     mutationFn: () => startGameSession({ gameType: 'hangman', celebrityId: celebritySlug }),
     onSuccess: (data: GameSession) => {
-      setSessionId(data.sessionId)
-      const w: string = data.config?.scrambled ?? FALLBACK_WORDS[Math.floor(Math.random() * FALLBACK_WORDS.length)]
-      setWord(w.toUpperCase().split(''))
-      setHint(data.config?.hint ?? 'Celebrity related term')
-      setStarting(false)
+      setSessionId(data.sessionId);
+      const w: string = data.config?.scrambled ?? FALLBACK_WORDS[Math.floor(Math.random() * FALLBACK_WORDS.length)];
+      setWord(w.toUpperCase().split(''));
+      setHint(data.config?.hint ?? 'Celebrity related term');
+      setStarting(false);
     },
-  })
+  });
 
-  useEffect(() => { startMutation.mutate() }, []) // eslint-disable-line
+  useEffect(() => {
+    startMutation.mutate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const completeMutation = useMutation({
     mutationFn: ({ wrongLetters }: { wrongLetters: string[] }) =>
       completeGameSession(sessionId!, { word: word.join(''), wrongLetters }),
     onSuccess: (data: GameResult) => {
-      setLastResult(data)
-      incrementGamesPlayed()
-      if ((data as any).newBalance != null) setBalance((data as any).newBalance)
-      onComplete()
+      setLastResult(data);
+      incrementGamesPlayed();
+      if ((data as any).newBalance != null) setBalance((data as any).newBalance);
+      onComplete();
     },
-  })
+  });
 
-  const wrongGuesses = [...guessed].filter(l => !word.includes(l))
-  const wrongCount   = wrongGuesses.length
-  const isWon        = word.length > 0 && word.every(l => guessed.has(l))
-  const isLost       = wrongCount >= MAX_WRONG
+  const wrongGuesses = [...guessed].filter(l => !word.includes(l));
+  const wrongCount = wrongGuesses.length;
+  const isWon = word.length > 0 && word.every(l => guessed.has(l));
+  const isLost = wrongCount >= MAX_WRONG;
 
   const handleGuess = useCallback(
     (letter: string) => {
-      if (gameOver || guessed.has(letter)) return
-      const next = new Set(guessed).add(letter)
-      setGuessed(next)
+      if (gameOver || guessed.has(letter)) return;
+      const next = new Set(guessed).add(letter);
+      setGuessed(next);
 
-      const nextWrong = [...next].filter(l => !word.includes(l))
-      const nextWon   = word.every(l => next.has(l))
-      const nextLost  = nextWrong.length >= MAX_WRONG
+      const nextWrong = [...next].filter(l => !word.includes(l));
+      const nextWon = word.every(l => next.has(l));
+      const nextLost = nextWrong.length >= MAX_WRONG;
 
       if (nextWon || nextLost) {
-        setGameOver(true)
-        completeMutation.mutate({ wrongLetters: nextWrong })
+        setGameOver(true);
+        completeMutation.mutate({ wrongLetters: nextWrong });
       }
     },
-    [gameOver, guessed, word], // eslint-disable-line
-  )
+    [gameOver, guessed, word, completeMutation]
+  );
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      const l = e.key.toUpperCase()
-      if (ALPHABET.includes(l)) handleGuess(l)
+      const l = e.key.toUpperCase();
+      if (ALPHABET.includes(l)) handleGuess(l);
     }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [handleGuess])
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [handleGuess]);
 
   if (starting) {
     return (
@@ -152,7 +149,7 @@ export default function HangmanGame({ celebritySlug, onComplete }: HangmanGamePr
         <Spinner />
         <p className="text-sm text-gray-400">Picking a word…</p>
       </div>
-    )
+    );
   }
 
   return (
@@ -192,8 +189,8 @@ export default function HangmanGame({ celebritySlug, onComplete }: HangmanGamePr
       {!gameOver && (
         <div className="flex flex-wrap justify-center gap-1.5">
           {ALPHABET.map(l => {
-            const isGuessed = guessed.has(l)
-            const isWrong   = isGuessed && !word.includes(l)
+            const isGuessed = guessed.has(l);
+            const isWrong = isGuessed && !word.includes(l);
             return (
               <button
                 key={l}
@@ -202,13 +199,13 @@ export default function HangmanGame({ celebritySlug, onComplete }: HangmanGamePr
                 className={cn(
                   'w-9 h-9 rounded-lg text-sm font-bold transition-all',
                   !isGuessed && 'border border-sw-border bg-sw-card hover:border-gold hover:text-gold text-white',
-                  isWrong    && 'bg-loss/10 border border-loss/30 text-loss/50 cursor-not-allowed',
-                  isGuessed && !isWrong && 'bg-win/10 border border-win/30 text-win cursor-not-allowed',
+                  isWrong && 'bg-loss/10 border border-loss/30 text-loss/50 cursor-not-allowed',
+                  isGuessed && !isWrong && 'bg-win/10 border border-win/30 text-win cursor-not-allowed'
                 )}
               >
                 {l}
               </button>
-            )
+            );
           })}
         </div>
       )}
@@ -216,7 +213,9 @@ export default function HangmanGame({ celebritySlug, onComplete }: HangmanGamePr
       {isLost && !completeMutation.isPending && (
         <div className="card p-4 text-center border-loss/30 space-y-1">
           <p className="text-loss font-bold">Hanged! 💀</p>
-          <p className="text-sm text-gray-400">The word was <span className="text-white font-bold">{word.join('')}</span></p>
+          <p className="text-sm text-gray-400">
+            The word was <span className="text-white font-bold">{word.join('')}</span>
+          </p>
         </div>
       )}
 
@@ -224,5 +223,5 @@ export default function HangmanGame({ celebritySlug, onComplete }: HangmanGamePr
         <div className="flex justify-center py-4"><Spinner /></div>
       )}
     </div>
-  )
+  );
 }

@@ -60,8 +60,12 @@ export interface DepositAddress {
 export const submitDeposit = (payload: SubmitDepositPayload) =>
   api.post<{ depositId: string; status: 'pending' }>('/users/me/deposit', payload).then(r => r.data)
 
-export const getDepositAddresses = () =>
-  api.get<DepositAddress[]>('/deposits/addresses').then(r => r.data)
+export const getDepositAddresses = async (): Promise<DepositAddress[]> => {
+  const response = await api.get('/deposits/addresses');
+  // If backend returns { success: true, addresses: [...] }, return response.data.addresses
+  // If it returns the array directly, return response.data
+  return Array.isArray(response.data) ? response.data : response.data.addresses || [];
+};
 
 export const getDepositHistory = () =>
   api.get<Deposit[]>('/users/me/deposit-history').then(r => r.data)

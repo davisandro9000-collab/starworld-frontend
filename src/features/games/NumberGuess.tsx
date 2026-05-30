@@ -1,82 +1,87 @@
-import { useState, useRef, useEffect } from 'react'
-import { useMutation } from '@tanstack/react-query'
-import { motion, AnimatePresence } from 'framer-motion'
-import { startGameSession, completeGameSession, type GameSession, type GameResult } from '../../api/game.api'
-import { useGameStore } from './gameStore'
-import { useCoinStore } from '../../stores/index'
-import { cn } from '../../lib/utils'
-import Spinner from '../../components/ui/Spinner'
+import { useState, useEffect } from 'react';
+import { useMutation } from '@tanstack/react-query';
+import { motion, AnimatePresence } from 'framer-motion';
+import { startGameSession, completeGameSession, type GameSession, type GameResult } from '../../api/game.api';
+import { useGameStore } from '../../stores/gameStore';
+import { useAuthStore } from '../../stores/authStore';
+import { cn } from '../../lib/utils';
+import Spinner from '../../components/ui/Spinner';
 
 interface NumberGuessProps {
-  celebritySlug: string
-  onComplete: () => void
+  celebritySlug: string;
+  onComplete: () => void;
 }
 
-const MAX_RANGE   = 100
-const MAX_GUESSES = 7
+const MAX_RANGE = 100;
+const MAX_GUESSES = 7;
 
 function getHint(guess: number, target: number): 'too-low' | 'too-high' | 'correct' {
-  if (guess === target) return 'correct'
-  return guess < target ? 'too-low' : 'too-high'
+  if (guess === target) return 'correct';
+  return guess < target ? 'too-low' : 'too-high';
 }
 
 export default function NumberGuess({ celebritySlug, onComplete }: NumberGuessProps) {
-  const { setLastResult, incrementGamesPlayed } = useGameStore()
-  const { setBalance } = useCoinStore()
+  const { setLastResult, incrementGamesPlayed } = useGameStore();
+  const { user, setUser } = useAuthStore();
 
-  const [starting, setStarting]     = useState(true)
-  const [sessionId, setSessionId]   = useState<string | null>(null)
-  const [target]                    = useState(() => Math.floor(Math.random() * MAX_RANGE) + 1)
-  const [input, setInput]           = useState('')
-  const [guesses, setGuesses]       = useState<{ value: number; hint: ReturnType<typeof getHint> }[]>([])
-  const [gameOver, setGameOver]     = useState(false)
-  const [won, setWon]               = useState(false)
-  const attemptsRef                 = useRef(0)
+  const [starting, setStarting] = useState(true);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [target] = useState(() => Math.floor(Math.random() * MAX_RANGE) + 1);
+  const [input, setInput] = useState('');
+  const [guesses, setGuesses] = useState<{ value: number; hint: ReturnType<typeof getHint> }[]>([]);
+  const [gameOver, setGameOver] = useState(false);
+  const [won, setWon] = useState(false);
+  const attemptsRef = { current: 0 };
 
   const startMutation = useMutation({
     mutationFn: () => startGameSession({ gameType: 'number_guess', celebrityId: celebritySlug }),
     onSuccess: (data: GameSession) => {
-      setSessionId(data.sessionId)
-      setStarting(false)
+      setSessionId(data.sessionId);
+      setStarting(false);
     },
-  })
+  });
 
-  useEffect(() => { startMutation.mutate() }, []) // eslint-disable-line
+  useEffect(() => {
+    startMutation.mutate();
+  }, []);
 
   const completeMutation = useMutation({
     mutationFn: ({ isWon, attemptCount }: { isWon: boolean; attemptCount: number }) =>
       completeGameSession(sessionId!, { attempts: attemptCount, guess: target }),
     onSuccess: (data: GameResult) => {
-      setLastResult(data)
-      incrementGamesPlayed()
-      if ((data as any).newBalance != null) setBalance((data as any).newBalance)
-      onComplete()
+      setLastResult(data);
+      incrementGamesPlayed();
+      if (user) {
+        const earned = data.coinsEarned + (data.consolationCoins ?? 0);
+        setUser({ ...user, coinBalance: user.coinBalance + earned });
+      }
+      onComplete();
     },
-  })
+  });
 
   function handleGuess() {
-    const val = parseInt(input, 10)
-    if (isNaN(val) || val < 1 || val > MAX_RANGE || gameOver) return
-    setInput('')
+    const val = parseInt(input, 10);
+    if (isNaN(val) || val < 1 || val > MAX_RANGE || gameOver) return;
+    setInput('');
 
-    const hint = getHint(val, target)
-    const next = [...guesses, { value: val, hint }]
-    setGuesses(next)
-    attemptsRef.current = next.length
+    const hint = getHint(val, target);
+    const next = [...guesses, { value: val, hint }];
+    setGuesses(next);
+    attemptsRef.current = next.length;
 
-    const isWon  = hint === 'correct'
-    const isLost = !isWon && next.length >= MAX_GUESSES
+    const isWon = hint === 'correct';
+    const isLost = !isWon && next.length >= MAX_GUESSES;
 
     if (isWon || isLost) {
-      setGameOver(true)
-      setWon(isWon)
-      completeMutation.mutate({ isWon, attemptCount: next.length })
+      setGameOver(true);
+      setWon(isWon);
+      completeMutation.mutate({ isWon, attemptCount: next.length });
     }
   }
 
-  const remaining = MAX_GUESSES - guesses.length
-  const lo = guesses.filter(g => g.hint === 'too-low' ).reduce((m, g) => Math.max(m, g.value), 0)
-  const hi = guesses.filter(g => g.hint === 'too-high').reduce((m, g) => Math.min(m, g.value), MAX_RANGE + 1)
+  const remaining = MAX_GUESSES - guesses.length;
+  const lo = guesses.filter((g) => g.hint === 'too-low').reduce((m, g) => Math.max(m, g.value), 0);
+  const hi = guesses.filter((g) => g.hint === 'too-high').reduce((m, g) => Math.min(m, g.value), MAX_RANGE + 1);
 
   if (starting) {
     return (
@@ -84,14 +89,18 @@ export default function NumberGuess({ celebritySlug, onComplete }: NumberGuessPr
         <Spinner />
         <p className="text-sm text-gray-400">Loading game…</p>
       </div>
-    )
+    );
   }
 
   return (
     <div className="space-y-5 max-w-sm mx-auto">
       <div className="text-center space-y-1">
-        <p className="text-sm text-gray-400">Guess a number between <span className="text-white">1 – {MAX_RANGE}</span></p>
-        <p className="text-xs text-gray-500">{remaining} guess{remaining !== 1 ? 'es' : ''} remaining</p>
+        <p className="text-sm text-gray-400">
+          Guess a number between <span className="text-white">1 – {MAX_RANGE}</span>
+        </p>
+        <p className="text-xs text-gray-500">
+          {remaining} guess{remaining !== 1 ? 'es' : ''} remaining
+        </p>
       </div>
 
       <div className="card p-3 space-y-2">
@@ -100,7 +109,7 @@ export default function NumberGuess({ celebritySlug, onComplete }: NumberGuessPr
           <motion.div
             className="absolute h-full bg-gold/60 rounded-full"
             animate={{
-              left:  `${(lo / MAX_RANGE) * 100}%`,
+              left: `${(lo / MAX_RANGE) * 100}%`,
               right: `${((MAX_RANGE - hi + 1) / MAX_RANGE) * 100}%`,
             }}
             transition={{ duration: 0.3 }}
@@ -122,18 +131,20 @@ export default function NumberGuess({ celebritySlug, onComplete }: NumberGuessPr
               transition={{ duration: 0.2 }}
               className={cn(
                 'flex items-center justify-between rounded-lg px-3 py-2 text-sm card border',
-                g.hint === 'correct' && 'border-win/30 bg-win/10',
+                g.hint === 'correct' && 'border-win/30 bg-win/10'
               )}
             >
               <span className="font-bold text-white">{g.value}</span>
-              <span className={cn(
-                'text-xs',
-                g.hint === 'correct'  && 'text-win',
-                g.hint === 'too-low'  && 'text-amber-400',
-                g.hint === 'too-high' && 'text-sky-400',
-              )}>
-                {g.hint === 'correct'  && '✓ Correct!'}
-                {g.hint === 'too-low'  && '↑ Too low'}
+              <span
+                className={cn(
+                  'text-xs',
+                  g.hint === 'correct' && 'text-win',
+                  g.hint === 'too-low' && 'text-amber-400',
+                  g.hint === 'too-high' && 'text-sky-400'
+                )}
+              >
+                {g.hint === 'correct' && '✓ Correct!'}
+                {g.hint === 'too-low' && '↑ Too low'}
                 {g.hint === 'too-high' && '↓ Too high'}
               </span>
             </motion.div>
@@ -144,27 +155,35 @@ export default function NumberGuess({ celebritySlug, onComplete }: NumberGuessPr
       {!gameOver && (
         <div className="flex gap-2">
           <input
-            type="number" min={1} max={MAX_RANGE}
+            type="number"
+            min={1}
+            max={MAX_RANGE}
             value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleGuess()}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleGuess()}
             placeholder={`1 – ${MAX_RANGE}`}
             className="input-sw flex-1 text-center text-lg font-bold"
           />
-          <button onClick={handleGuess} className="btn-gold px-5">Guess</button>
+          <button onClick={handleGuess} className="btn-gold px-5">
+            Guess
+          </button>
         </div>
       )}
 
       {gameOver && !won && !completeMutation.isPending && (
         <div className="card p-4 text-center space-y-1 border-loss/30">
           <p className="text-loss font-bold">Out of guesses!</p>
-          <p className="text-sm text-gray-400">The number was <span className="text-white font-bold">{target}</span></p>
+          <p className="text-sm text-gray-400">
+            The number was <span className="text-white font-bold">{target}</span>
+          </p>
         </div>
       )}
 
       {gameOver && completeMutation.isPending && (
-        <div className="flex justify-center py-4"><Spinner /></div>
+        <div className="flex justify-center py-4">
+          <Spinner />
+        </div>
       )}
     </div>
-  )
+  );
 }

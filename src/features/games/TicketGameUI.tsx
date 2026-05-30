@@ -1,51 +1,51 @@
-import { useEffect, useRef, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { cn } from '../../lib/utils'
-import TierBadge from '../../components/ui/TierBadge'
-import type { GamePhase, GameStartPayload, GameResultPayload } from '../../hooks/useTicketGame'
+import { useEffect, useRef, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { cn } from '../../lib/utils';
+import TierBadge from '../../components/ui/TierBadge';
+import type { GamePhase, GameStartPayload, GameResultPayload } from '../../hooks/useTicketGame';
 
 interface TicketGameUIProps {
-  phase: GamePhase
-  gameStart: GameStartPayload | null
-  result: GameResultPayload | null
-  currentUserId: string
-  onTap: () => void
-  hasTapped: boolean
+  phase: GamePhase;
+  gameStart: GameStartPayload | null;
+  result: GameResultPayload | null;
+  currentUserId: string;
+  onTap: () => void;
+  hasTapped: boolean;
 }
 
 /** Counts down from 3 to 0 and calls onDone */
 function useCountdown(active: boolean, onDone: () => void) {
-  const [count, setCount] = useState(3)
-  const doneRef = useRef(false)
+  const [count, setCount] = useState(3);
+  const doneRef = useRef(false);
 
   useEffect(() => {
     if (!active) {
-      setCount(3)
-      doneRef.current = false
-      return
+      setCount(3);
+      doneRef.current = false;
+      return;
     }
 
-    doneRef.current = false
-    setCount(3)
+    doneRef.current = false;
+    setCount(3);
 
     const id = setInterval(() => {
       setCount((prev) => {
         if (prev <= 1) {
-          clearInterval(id)
+          clearInterval(id);
           if (!doneRef.current) {
-            doneRef.current = true
-            onDone()
+            doneRef.current = true;
+            onDone();
           }
-          return 0
+          return 0;
         }
-        return prev - 1
-      })
-    }, 1000)
+        return prev - 1;
+      });
+    }, 1000);
 
-    return () => clearInterval(id)
-  }, [active, onDone])
+    return () => clearInterval(id);
+  }, [active, onDone]);
 
-  return count
+  return count;
 }
 
 export default function TicketGameUI({
@@ -56,24 +56,22 @@ export default function TicketGameUI({
   onTap,
   hasTapped,
 }: TicketGameUIProps) {
-  const isCountdown = phase === 'countdown'
-  const isTap = phase === 'tap'
-  const isTapped = phase === 'tapped'
-  const isResult = phase === 'result'
+  const isCountdown = phase === 'countdown';
+  const isTap = phase === 'tap';
+  const isTapped = phase === 'tapped';
+  const isResult = phase === 'result';
 
-  // Countdown ticks on its own — just visual; actual signal comes from server
-  const countdown = useCountdown(isCountdown, () => {})
+  const countdown = useCountdown(isCountdown, () => {});
 
-  const isWinner = isResult && result?.winnerId === currentUserId
-  const playerLabel = gameStart?.role === 'player1' ? 'You' : 'You'
-  const opponentName = gameStart?.opponent?.username ?? 'Opponent'
-  const opponentTier = (gameStart?.opponent?.tier ?? 'bronze') as 'bronze' | 'silver' | 'platinum'
-  const prizeName = gameStart?.prizeDetails?.name ?? 'Prize Ticket'
-  const prizeCoins = gameStart?.prizeDetails?.coins ?? 0
+  const isWinner = isResult && result?.winnerId === currentUserId;
+  const playerLabel = gameStart?.role === 'player1' ? 'You' : 'You';
+  const opponentName = gameStart?.opponent?.username ?? 'Opponent';
+  const opponentTier = (gameStart?.opponent?.tier ?? 'bronze') as 'bronze' | 'silver' | 'platinum';
+  const prizeName = gameStart?.prizeDetails?.name ?? 'Prize Ticket';
+  const prizeCoins = gameStart?.prizeDetails?.coins ?? 0;
 
   return (
     <div className="relative flex flex-col items-center justify-center min-h-screen bg-sw-bg overflow-hidden bg-dark-grid">
-      {/* ── Phase: Waiting ──────────────────────────────────── */}
       <AnimatePresence mode="wait">
         {phase === 'waiting' && (
           <motion.div
@@ -89,7 +87,6 @@ export default function TicketGameUI({
           </motion.div>
         )}
 
-        {/* ── Phase: Countdown + Tap + Tapped ─────────────── */}
         {(isCountdown || isTap || isTapped) && gameStart && (
           <motion.div
             key="arena"
@@ -98,23 +95,18 @@ export default function TicketGameUI({
             exit={{ opacity: 0 }}
             className="w-full max-w-2xl px-4 flex flex-col items-center gap-8"
           >
-            {/* Prize banner */}
             <div className="card card-gold px-6 py-3 flex items-center gap-3">
               <span className="text-gold text-xl">🎟</span>
               <div className="text-center">
                 <p className="font-heading font-bold text-white text-sm">{prizeName}</p>
                 <p className="text-white/40 font-body text-xs">
                   Winner takes{' '}
-                  <span className="text-gold font-semibold">
-                    {prizeCoins.toLocaleString()} coins
-                  </span>
+                  <span className="text-gold font-semibold">{prizeCoins.toLocaleString()} coins</span>
                 </p>
               </div>
             </div>
 
-            {/* Split ticket arena */}
             <div className="w-full flex rounded-xl overflow-hidden border border-sw-border-2 h-52 md:h-64 relative">
-              {/* Player half — left */}
               <motion.div
                 animate={
                   isTap
@@ -135,9 +127,7 @@ export default function TicketGameUI({
                     animate={{ scale: 1 }}
                     className={cn(
                       'mt-1 text-xs font-body px-2 py-0.5 rounded-full',
-                      isTapped
-                        ? 'bg-win/20 text-win'
-                        : 'bg-cyan/20 text-cyan animate-pulse'
+                      isTapped ? 'bg-win/20 text-win' : 'bg-cyan/20 text-cyan animate-pulse'
                     )}
                   >
                     {isTapped ? '✓ Tapped' : 'TAP NOW'}
@@ -145,12 +135,10 @@ export default function TicketGameUI({
                 )}
               </motion.div>
 
-              {/* VS divider */}
               <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-sw-bg border border-sw-border-2 flex items-center justify-center">
                 <span className="text-white/40 font-heading font-black text-xs">VS</span>
               </div>
 
-              {/* Opponent half — right */}
               <motion.div
                 className="flex-1 flex flex-col items-center justify-center gap-2"
                 style={{ backgroundColor: 'rgba(19,23,43,1)' }}
@@ -163,7 +151,6 @@ export default function TicketGameUI({
               </motion.div>
             </div>
 
-            {/* Countdown / tap flash */}
             <AnimatePresence mode="wait">
               {isCountdown && (
                 <motion.div
@@ -206,7 +193,6 @@ export default function TicketGameUI({
           </motion.div>
         )}
 
-        {/* ── Phase: Result ────────────────────────────────── */}
         {isResult && result && (
           <motion.div
             key="result"
@@ -215,7 +201,6 @@ export default function TicketGameUI({
             transition={{ type: 'spring', stiffness: 200, damping: 22 }}
             className="flex flex-col items-center gap-6 text-center px-4"
           >
-            {/* Win / Loss icon */}
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
@@ -291,5 +276,5 @@ export default function TicketGameUI({
         )}
       </AnimatePresence>
     </div>
-  )
+  );
 }

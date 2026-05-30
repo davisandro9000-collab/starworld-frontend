@@ -1,9 +1,12 @@
+// src/pages/ListingDetailPage.tsx
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  getExchangeListing, getAuctionBids, buyListing, cancelListing,
-  AuctionBid
+  getExchangeListing,
+  buyFixedPrice as buyListing,
+  cancelListing,
+  type ExchangeListing
 } from '../api/ticket.api'
 import { useTicketStore } from '../features/tickets/ticketStore'
 import AuctionTimer from '../features/tickets/AuctionTimer'
@@ -35,7 +38,7 @@ export default function ListingDetailPage() {
   const [buySuccess, setBuySuccess] = useState(false)
   const [auctionExpired, setAuctionExpired] = useState(false)
 
-  // Fetch listing
+  // Fetch listing (includes auctionBids)
   const { data: listing, isLoading, isError } = useQuery({
     queryKey: ['listing', id],
     queryFn: () => getExchangeListing(id!),
@@ -43,22 +46,21 @@ export default function ListingDetailPage() {
     enabled: !!id,
   })
 
-  // Fetch bids (auction only)
-  const { data: bids } = useQuery({
-    queryKey: ['listing-bids', id],
-    queryFn: () => getAuctionBids(id!),
-    enabled: !!id && listing?.listingType === 'auction',
-    staleTime: 10_000,
-  })
-
-  useEffect(() => { if (listing) setActiveListing(listing) }, [listing])
-  useEffect(() => { if (bids) setActiveBids(bids) }, [bids])
+  // Set listing and bids in store when data arrives
+  useEffect(() => {
+    if (listing) {
+      setActiveListing(listing)
+      if (listing.auctionBids) {
+        setActiveBids(listing.auctionBids)
+      }
+    }
+  }, [listing, setActiveListing, setActiveBids])
 
   // Socket: live bid updates
   useEffect(() => {
     if (!socket || !id) return
     socket.emit('join_auction', { exchangeId: id })
-    const handler = (data: { exchangeId: string; currentBid: number; bid: AuctionBid }) => {
+    const handler = (data: { exchangeId: string; currentBid: number; bid: any }) => {
       if (data.exchangeId === id) {
         updateActiveBid(data.bid)
         if (activeListing) {
@@ -71,7 +73,7 @@ export default function ListingDetailPage() {
       socket.off('auction_update', handler)
       socket.emit('leave_auction', { exchangeId: id })
     }
-  }, [socket, id])
+  }, [socket, id, activeListing, updateActiveBid, setActiveListing])
 
   // Buy mutation
   const buyMutation = useMutation({
@@ -109,8 +111,8 @@ export default function ListingDetailPage() {
   const isActive     = l.status === 'active' && !auctionExpired
   const canBuy       = !isOwner && isActive && !isAuction && balance >= (l.askingPriceCoins ?? 0)
   const canBid       = !isOwner && isActive && isAuction
-  const winningBid   = activeBids.find(b => b.isWinning) ?? bids?.find(b => b.isWinning)
-  const myBid        = activeBids.find(b => b.bidderId === user?.id)
+  const winningBid   = activeBids?.find(b => b.isWinning)
+  const myBid        = activeBids?.find(b => b.bidderId === user?.id)
 
   return (
     <div className="page-content max-w-3xl mx-auto space-y-6">
@@ -260,15 +262,15 @@ export default function ListingDetailPage() {
       </div>
 
       {/* Bid history (auction) */}
-      {isAuction && activeBids.length > 0 && (
+      {isAuction && activeBids && activeBids.length > 0 && (
         <div className="space-y-3">
           <h2 className="section-title">Bid History</h2>
           <div className="card divide-y divide-sw-border">
-            {activeBids.map((bid, i) => (
+            {activeBids.map((bid) => (
               <div key={bid.id} className="flex items-center justify-between px-4 py-3">
                 <div className="flex items-center gap-3">
                   <div className="w-7 h-7 rounded-full bg-sw-card-2 border border-sw-border flex items-center justify-center text-xs text-white/50">
-                    {bid.bidderUsername.charAt(0).toUpperCase()}
+                    {bid.bidderUsername?.charAt(0).toUpperCase() ?? 'U'}
                   </div>
                   <span className="text-white/70 text-sm">{bid.bidderUsername}</span>
                   {bid.isWinning && (

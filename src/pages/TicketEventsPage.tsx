@@ -15,7 +15,6 @@ const SORT_OPTIONS = [
 ] as const
 type SortId = typeof SORT_OPTIONS[number]['id']
 
-// Convert API event to card expected shape
 function convertEvent(apiEvent: ApiTicketEvent): TicketEvent {
   return {
     id: apiEvent.id,
@@ -36,17 +35,19 @@ export default function TicketEventsPage() {
   const [search, setSearch]     = useState('')
   const [selected, setSelected] = useState<TicketEvent | null>(null)
 
-  const { data: celeb, isLoading: celebLoading } = useQuery({
+  // First fetch the celebrity to get its UUID
+  const { data: celeb, isLoading: celebLoading, isError: celebError } = useQuery({
     queryKey: ['celebrity', slug],
     queryFn: () => getCelebrity(slug!),
     enabled: !!slug,
     staleTime: 5 * 60_000,
   })
 
-  const { data: eventsData, isLoading: eventsLoading } = useQuery({
-    queryKey: ['ticket-events', slug],
-    queryFn: () => getTicketEvents(1, 20, slug),
-    enabled: !!slug,
+  // Then fetch events using the celebrity's ID (UUID)
+  const { data: eventsData, isLoading: eventsLoading, error: eventsError } = useQuery({
+    queryKey: ['ticket-events', celeb?.id],
+    queryFn: () => getTicketEvents(1, 20, celeb!.id),
+    enabled: !!celeb?.id,
     staleTime: 2 * 60_000,
   })
 
@@ -62,6 +63,7 @@ export default function TicketEventsPage() {
   }, [eventsData])
 
   const isLoading = celebLoading || eventsLoading
+  const hasError = celebError || eventsError
 
   const filtered = useMemo(() => {
     let list = [...events]
@@ -86,6 +88,15 @@ export default function TicketEventsPage() {
   }, [events, search, sort])
 
   const celebAvatar = celeb?.avatarUrl
+
+  if (hasError) {
+    return (
+      <div className="page-content text-center py-16">
+        <p className="text-white/60">Failed to load events. Please try again later.</p>
+        <button onClick={() => window.location.reload()} className="btn-outline mt-4">Refresh</button>
+      </div>
+    )
+  }
 
   return (
     <div className="page-content">

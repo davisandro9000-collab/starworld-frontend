@@ -58,7 +58,7 @@ export default function DashboardPage() {
           </h1>
           <p className="text-white/40 text-sm mt-0.5">Here's your world</p>
         </div>
-        <TierBadge tier={user?.tier ?? 'bronze'} />
+        <TierBadge tier={user?.tier?.slug ?? 'bronze'} />
       </div>
 
       {/* Stats row */}

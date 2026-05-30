@@ -1,36 +1,41 @@
-import { api } from './axios'
-import { AppUser } from '../stores/authStore'
+import { api } from './axios';
 
-interface AuthResponse {
-  user: AppUser
-  accessToken: string
+export interface LoginResponse {
+  accessToken: string;
+  user: {
+    id: string;
+    username: string;
+    email: string;
+    displayName?: string;
+    avatarUrl?: string;
+    coinBalance: number;
+    tier: {
+      id: string;
+      slug: string;
+      name: string;
+      colorHex: string;
+    };
+    referralCode?: string;
+    payoutUnlocked: boolean;
+    totalReferrals: number;
+  };
 }
 
-export async function login(email: string, password: string): Promise<AuthResponse> {
-  const { data } = await api.post<AuthResponse>('/auth/login', { email, password })
-  return data
-}
+export const login = async (email: string, password: string): Promise<LoginResponse> => {
+  const { data } = await api.post('/auth/login', { email, password });
+  return data;
+};
 
-export async function register(payload: {
-  username: string
-  email: string
-  password: string
-  referralCode?: string
-}): Promise<AuthResponse> {
-  const { data } = await api.post<AuthResponse>('/auth/register', payload)
-  return data
-}
+export const register = async (username: string, email: string, password: string) => {
+  const { data } = await api.post('/auth/register', { username, email, password });
+  return data;
+};
 
-export async function logout(): Promise<void> {
-  await api.post('/auth/logout')
-}
+export const refreshToken = async () => {
+  const { data } = await api.post('/auth/refresh');
+  return data;
+};
 
-export async function refreshToken(): Promise<{ accessToken: string }> {
-  const { data } = await api.post<{ accessToken: string }>('/auth/refresh')
-  return data
-}
-
-export async function getMe(): Promise<AppUser> {
-  const { data } = await api.get<AppUser>('/auth/me')
-  return data
-}
+export const logout = async () => {
+  await api.post('/auth/logout');
+};

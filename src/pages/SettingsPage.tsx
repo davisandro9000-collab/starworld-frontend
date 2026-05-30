@@ -83,7 +83,7 @@ function ProfileTab() {
         </div>
         <div>
           <p className="text-sm font-semibold text-white mb-1">{user?.username}</p>
-          <TierBadge tier={user?.tier ?? 'bronze'} />
+          <TierBadge tier={user?.tier?.slug ?? 'bronze'} />
         </div>
       </div>
 

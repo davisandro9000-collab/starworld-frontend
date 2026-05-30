@@ -65,7 +65,7 @@ export default function Navbar() {
               <CoinBalance />
 
               {/* Tier badge */}
-              <TierBadge tier={user.tier ?? 'bronze'} />
+              <TierBadge tier={user?.tier?.slug ?? 'bronze'} />
 
               {/* Notifications */}
               <NotificationBell />

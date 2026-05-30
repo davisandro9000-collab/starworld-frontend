@@ -1,11 +1,8 @@
 // src/lib/socketClient.ts
 import { io, Socket } from 'socket.io-client';
 
-const isProd = typeof window !== 'undefined' && window.location.hostname !== 'localhost';
-// Direct Railway backend URL – WebSockets cannot be proxied by Netlify
-const SOCKET_URL = isProd
-  ? 'https://starworld-backend-production.up.railway.app'
-  : 'http://localhost:3001';
+// Direct Railway backend URL – never go through Netlify proxy for WebSocket
+const SOCKET_URL = 'https://starworld-backend-production.up.railway.app';
 
 let userSocket: Socket | null = null;
 

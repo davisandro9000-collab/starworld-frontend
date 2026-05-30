@@ -3,21 +3,41 @@ import { API_BASE } from '../lib/constants';
 import { useAuthStore } from '../stores/authStore';
 
 export const api = axios.create({
-  baseURL: API_BASE,  // now '' (empty string)
+  baseURL: API_BASE,
   withCredentials: true,
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Request interceptor – add access token from Zustand
+// Helper to get token – first from store, then from localStorage
+function getToken(): string | null {
+  // Try Zustand store first
+  const storeToken = useAuthStore.getState().accessToken;
+  if (storeToken) return storeToken;
+
+  // Fallback: read from known localStorage keys
+  const keys = ['auth-storage', 'starworld-auth', 'user-storage'];
+  for (const key of keys) {
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        const token = parsed?.state?.accessToken || parsed?.accessToken;
+        if (token) return token;
+      } catch (e) {}
+    }
+  }
+  return null;
+}
+
 api.interceptors.request.use((config) => {
-  const token = useAuthStore.getState().accessToken;
+  const token = getToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
 
-// Response interceptor – refresh token flow (refresh token in cookie)
+// Response interceptor (refresh token) – unchanged
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -25,7 +45,6 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       try {
-        // Backend reads refreshToken from cookie
         const response = await api.post('/auth/refresh', {});
         const { accessToken } = response.data;
         useAuthStore.getState().setAccessToken(accessToken);

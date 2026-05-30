@@ -1,7 +1,6 @@
-// src/lib/socketClient.ts
 import { io, Socket } from 'socket.io-client';
 
-// Direct Railway backend URL – never go through Netlify proxy for WebSocket
+// HARDCODED PRODUCTION URL – never Netlify
 const SOCKET_URL = 'https://starworld-backend-production.up.railway.app';
 
 let userSocket: Socket | null = null;

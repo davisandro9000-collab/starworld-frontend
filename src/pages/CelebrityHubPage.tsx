@@ -117,13 +117,17 @@ function BioTab({ celeb }: { celeb: Celebrity }) {
 }
 
 function NewsTab({ slug }: { slug: string }) {
-  const { data: articles, isLoading } = useQuery({
+  const { data: articles, isLoading, error } = useQuery({
     queryKey: ['celeb-news', slug],
     queryFn: () => getCelebNews(slug),
     staleTime: 15 * 60 * 1000,
   });
 
   if (isLoading) return <div className="flex justify-center py-10"><Spinner size="md" /></div>;
+  if (error) {
+    console.error('News fetch error:', error);
+    return <div className="card p-8 text-center rounded-sw-lg"><p className="text-white/40 text-sm">Failed to load news.</p></div>;
+  }
   if (!articles || articles.length === 0) {
     return <div className="card p-8 text-center rounded-sw-lg"><span className="text-3xl block mb-3">📰</span><p className="text-white/40 text-sm font-body">No news articles yet. Check back soon.</p></div>;
   }
@@ -136,7 +140,9 @@ function NewsTab({ slug }: { slug: string }) {
           <div className="min-w-0">
             <p className="font-heading font-semibold text-sm text-white group-hover:text-gold transition-colors leading-snug line-clamp-2">{article.title}</p>
             <p className="text-xxs text-white/40 mt-1 font-body line-clamp-2 leading-relaxed">{article.description}</p>
-            <p className="text-xxs text-white/25 mt-1.5 font-body">{new Date(article.publishedAt).toLocaleDateString()}</p>
+            <p className="text-xxs text-white/25 mt-1.5 font-body">
+              {article.publishedAt ? new Date(article.publishedAt).toLocaleDateString() : 'Date unknown'}
+            </p>
           </div>
         </a>
       ))}
@@ -186,19 +192,22 @@ function TicketsTab({ slug, celebName }: { slug: string; celebName: string }) {
 }
 
 export default function CelebrityHubPage() {
-  const { slug } = useParams<{ slug: string }>()
-  const [activeTab, setActiveTab] = useState<Tab>('games')
-  const [selectedGame, setSelectedGame] = useState<string | null>(null)
-  const user = useAuthStore(s => s.user)
+  const { slug } = useParams<{ slug: string }>();
+  const [activeTab, setActiveTab] = useState<Tab>('games');
+  const [selectedGame, setSelectedGame] = useState<string | null>(null);
+  const user = useAuthStore((s) => s.user);
+
+  // Debug: log slug to console
+  console.log('🔍 CelebrityHubPage slug:', slug);
 
   const { data: celeb, isLoading, isError } = useQuery({
     queryKey: ['celebrity', slug],
     queryFn: () => getCelebrity(slug!),
     enabled: !!slug,
     staleTime: 1000 * 60 * 5,
-  })
+  });
 
-  if (isLoading) return <div className="flex items-center justify-center min-h-[60vh]"><Spinner size="lg" /></div>
+  if (isLoading) return <div className="flex items-center justify-center min-h-[60vh]"><Spinner size="lg" /></div>;
   if (isError || !celeb) {
     return (
       <div className="page-content text-center py-20">
@@ -207,7 +216,7 @@ export default function CelebrityHubPage() {
         <p className="text-white/40 text-sm font-body mb-6">This star might have left the building.</p>
         <Link to="/" className="btn-gold">Back to Home</Link>
       </div>
-    )
+    );
   }
 
   return (
@@ -244,7 +253,7 @@ export default function CelebrityHubPage() {
       <div className="sticky top-[56px] z-40 bg-sw-bg border-b border-sw-border">
         <div className="max-w-5xl mx-auto px-4">
           <div className="flex gap-1 overflow-x-auto scrollbar-none py-1">
-            {TABS.map(tab => (
+            {TABS.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
@@ -272,5 +281,5 @@ export default function CelebrityHubPage() {
       {/* Game modal */}
       {selectedGame && <GameModal gameType={selectedGame as any} celebrityId={celeb.id} onClose={() => setSelectedGame(null)} />}
     </div>
-  )
+  );
 }

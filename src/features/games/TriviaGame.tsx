@@ -1,273 +1,99 @@
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+// src/features/games/TriviaGame.tsx
+import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import {
-  startGameSession,
-  completeGameSession,
-  type GameResult,
-  type TriviaQuestion,
-} from '../../api/game.api';
-import { useAuthStore } from '../../stores/authStore';
-import { useSocketStore } from '../../stores/socketStore';
-import PrizeModal from './PrizeModal';
-import WinOfferModal, { type TicketGameOffer } from './WinOfferModal';
+import { startGameSession, completeGameSession, type GameResult } from '../../api/game.api';
+import { useNotifStore } from '../../stores/notifStore';
+import Spinner from '../../components/ui/Spinner';
 
-interface TriviaGameProps {
-  celebrityId?: string;
-  onResult?: (result: GameResult) => void;
-}
+const QUESTIONS = [
+  { question: 'What is 2+2?', options: ['3', '4', '5', '6'] },
+  { question: 'Which planet is known as the Red Planet?', options: ['Mars', 'Jupiter', 'Venus', 'Saturn'] },
+];
 
-const OPTION_LETTERS = ['A', 'B', 'C', 'D'];
-
-function ProgressDots({ total, current, correct }: { total: number; current: number; correct: number[] }) {
-  return (
-    <div className="flex gap-1.5 justify-center">
-      {Array.from({ length: total }).map((_, i) => (
-        <div
-          key={i}
-          className={[
-            'w-2 h-2 rounded-full transition-all duration-300',
-            i < current
-              ? correct.includes(i)
-                ? 'bg-win'
-                : 'bg-loss'
-              : i === current
-              ? 'bg-gold scale-125'
-              : 'bg-[#1E2440]',
-          ].join(' ')}
-        />
-      ))}
-    </div>
-  );
-}
-
-type Phase = 'idle' | 'loading' | 'playing' | 'reviewing' | 'done';
-
-export default function TriviaGame({ celebrityId, onResult }: TriviaGameProps) {
-  const [phase, setPhase] = useState<Phase>('idle');
+export default function TriviaGame({ celebrityId, onClose }: { celebrityId?: string; onClose: () => void }) {
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [questions, setQuestions] = useState<TriviaQuestion[]>([]);
-  const [qIndex, setQIndex] = useState(0);
+  const [current, setCurrent] = useState(0);
   const [answers, setAnswers] = useState<number[]>([]);
-  const [correctAnswers, setCorrectAnswers] = useState<number[]>([]);
-  const [selected, setSelected] = useState<number | null>(null);
-  const [timeLeft, setTimeLeft] = useState(15);
-  const [prizeResult, setPrizeResult] = useState<GameResult | null>(null);
-  const [showPrize, setShowPrize] = useState(false);
-  const [ticketOffer, setTicketOffer] = useState<TicketGameOffer | null>(null);
-  const [showTicketOffer, setShowTicketOffer] = useState(false);
-  const { user, setUser } = useAuthStore();
-  const { socket } = useSocketStore();
+  const [result, setResult] = useState<GameResult | null>(null);
+  const addNotification = useNotifStore((state) => state.addNotification);
 
-  useEffect(() => {
-    if (!socket) return;
-    const handler = (offer: TicketGameOffer) => {
-      setTicketOffer(offer);
-      setShowTicketOffer(true);
-    };
-    socket.on('ticket_game_offer', handler);
-    return () => {
-      socket.off('ticket_game_offer', handler);
-    };
-  }, [socket]);
-
-  useEffect(() => {
-    if (phase !== 'playing' || selected !== null) return;
-    if (timeLeft <= 0) {
-      handleAnswer(-1);
-      return;
-    }
-    const id = setTimeout(() => setTimeLeft((t) => t - 1), 1000);
-    return () => clearTimeout(id);
-  }, [phase, timeLeft, selected]);
-
-  const startMutation = useMutation({
+  const start = useMutation({
     mutationFn: () => startGameSession({ gameType: 'trivia', celebrityId }),
+    onSuccess: (session: any) => setSessionId(session.sessionId),
   });
 
-  const completeMutation = useMutation({
-    mutationFn: ({ id, ans }: { id: string; ans: number[] }) =>
-      completeGameSession(id, { answers: ans }),
+  const complete = useMutation({
+    mutationFn: () => completeGameSession(sessionId!, { answers }),
+    onSuccess: (data: GameResult) => {
+      setResult(data);
+      addNotification({
+        id: crypto.randomUUID(),
+        type: 'game_result',
+        title: data.won ? 'You won!' : 'Game over',
+        body: data.won ? `You won ${data.coinsEarned} coins!` : `You got ${data.consolationCoins} consolation coins.`,
+        priority: 'normal',
+        read: false,
+        createdAt: new Date().toISOString(),
+      });
+    },
   });
 
-  async function handleStart() {
-    setPhase('loading');
-    try {
-      const session = await startMutation.mutateAsync();
-      setSessionId(session.sessionId);
-      setQuestions(session.config.questions ?? []);
-      setAnswers([]);
-      setQIndex(0);
-      setTimeLeft(15);
-      setSelected(null);
-      setPhase('playing');
-    } catch {
-      setPhase('idle');
+  const handleAnswer = (idx: number) => {
+    const newAnswers = [...answers, idx];
+    setAnswers(newAnswers);
+    if (newAnswers.length === QUESTIONS.length) {
+      complete.mutate();
+    } else {
+      setCurrent(current + 1);
     }
-  }
+  };
 
-  function handleAnswer(optionIndex: number) {
-    if (selected !== null) return;
-    setSelected(optionIndex);
-
-    const newAnswers = [...answers, optionIndex];
-    setTimeout(() => {
-      if (qIndex < questions.length - 1) {
-        setAnswers(newAnswers);
-        setQIndex((i) => i + 1);
-        setSelected(null);
-        setTimeLeft(15);
-      } else {
-        setPhase('reviewing');
-        handleComplete(newAnswers);
-      }
-    }, 1200);
-  }
-
-  async function handleComplete(finalAnswers: number[]) {
-    if (!sessionId) return;
-    try {
-      const result = await completeMutation.mutateAsync({ id: sessionId, ans: finalAnswers });
-      if (user) {
-        const earned = result.coinsEarned + (result.consolationCoins ?? 0);
-        setUser({ ...user, coinBalance: user.coinBalance + earned });
-      }
-      setPrizeResult(result);
-      setPhase('done');
-      setShowPrize(true);
-      onResult?.(result);
-    } catch {
-      setPhase('idle');
-    }
-  }
-
-  function handlePlayAgain() {
-    setPhase('idle');
-    setSessionId(null);
-    setAnswers([]);
-    setCorrectAnswers([]);
-    setQIndex(0);
-    setPrizeResult(null);
-  }
-
-  const q = questions[qIndex];
-  const timerColor = timeLeft > 8 ? 'bg-win' : timeLeft > 4 ? 'bg-gold' : 'bg-loss';
-
-  if (phase === 'idle') {
+  if (result) {
     return (
-      <div className="card p-6 text-center max-w-md mx-auto">
-        <div className="text-4xl mb-3">🧠</div>
-        <h3 className="font-heading font-bold text-xl text-white mb-2">Celebrity Trivia</h3>
-        <p className="text-white/50 text-sm mb-6">
-          Answer questions about your star. More right answers = higher win chance.
-        </p>
-        <button className="btn-gold w-full" onClick={handleStart}>
-          Start Trivia
-        </button>
-        {startMutation.isError && (
-          <p className="text-loss text-xs mt-2">Couldn't load questions. Try again.</p>
-        )}
-      </div>
-    );
-  }
-
-  if (phase === 'loading') {
-    return (
-      <div className="card p-6 text-center max-w-md mx-auto">
-        <div className="flex items-center justify-center gap-2 text-white/50">
-          <span className="inline-block w-4 h-4 border-2 border-t-gold border-[#1E2440] rounded-full animate-spin" />
-          Loading questions…
+      <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+        <div className="bg-sw-card rounded-2xl p-6 max-w-md w-full text-center">
+          <p className="text-2xl font-bold text-gold mb-2">
+            {result.won ? `You won ${result.coinsEarned} coins!` : `You got ${result.consolationCoins} consolation coins.`}
+          </p>
+          {result.prize && <p className="text-white">Prize: {result.prize.label}</p>}
+          <button onClick={onClose} className="btn-gold w-full mt-4">Close</button>
         </div>
       </div>
     );
   }
 
-  if (phase === 'playing' && q) {
+  if (start.isPending) {
     return (
-      <div className="max-w-md mx-auto space-y-4">
-        <ProgressDots total={questions.length} current={qIndex} correct={correctAnswers} />
-
-        <div className="progress-track">
-          <div
-            className={`progress-fill ${timerColor}`}
-            style={{ width: `${(timeLeft / 15) * 100}%`, transition: 'width 1s linear' }}
-          />
-        </div>
-        <div className="flex justify-between text-xs text-white/40">
-          <span>
-            Q{qIndex + 1} of {questions.length}
-          </span>
-          <span className={timeLeft <= 4 ? 'text-loss font-bold' : ''}>{timeLeft}s</span>
-        </div>
-
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={qIndex}
-            initial={{ opacity: 0, x: 30 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -30 }}
-            transition={{ duration: 0.25 }}
-            className="card p-5"
-          >
-            <p className="font-heading font-semibold text-white text-base leading-snug mb-5">
-              {q.question}
-            </p>
-            <div className="grid grid-cols-1 gap-2">
-              {q.options.map((opt, i) => {
-                const isSelected = selected === i;
-                return (
-                  <button
-                    key={i}
-                    className={[
-                      'text-left px-4 py-3 rounded-xl border text-sm font-medium transition-all duration-200',
-                      isSelected
-                        ? 'border-gold bg-gold/10 text-gold'
-                        : selected !== null
-                        ? 'border-[#1E2440] text-white/30 cursor-default'
-                        : 'border-[#1E2440] text-white hover:border-gold/50 hover:bg-[#1A1F35] cursor-pointer',
-                    ].join(' ')}
-                    onClick={() => handleAnswer(i)}
-                    disabled={selected !== null}
-                  >
-                    <span className="text-gold/60 font-bold mr-2">{OPTION_LETTERS[i]}.</span>
-                    {opt}
-                  </button>
-                );
-              })}
-            </div>
-          </motion.div>
-        </AnimatePresence>
+      <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+        <Spinner size="lg" />
       </div>
     );
   }
 
+  if (!sessionId) {
+    return (
+      <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+        <div className="bg-sw-card rounded-2xl p-6 max-w-md w-full">
+          <h2 className="font-heading font-bold text-xl text-white mb-4">Trivia Challenge</h2>
+          <button onClick={() => start.mutate()} className="btn-gold w-full">Start Game</button>
+          <button onClick={onClose} className="btn-outline w-full mt-2">Cancel</button>
+        </div>
+      </div>
+    );
+  }
+
+  const q = QUESTIONS[current];
   return (
-    <div className="max-w-md mx-auto">
-      <div className="card p-6 text-center">
-        <p className="text-white/50 text-sm">Checking your answers…</p>
+    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+      <div className="bg-sw-card rounded-2xl p-6 max-w-md w-full">
+        <h2 className="font-heading font-bold text-xl text-white mb-2">Question {current+1}/{QUESTIONS.length}</h2>
+        <p className="text-white mb-4">{q.question}</p>
+        <div className="space-y-2">
+          {q.options.map((opt, idx) => (
+            <button key={idx} onClick={() => handleAnswer(idx)} className="btn-outline w-full text-left px-4 py-2">{opt}</button>
+          ))}
+        </div>
       </div>
-
-      <PrizeModal
-        open={showPrize}
-        result={prizeResult}
-        hasTicketOffer={showTicketOffer}
-        onClose={() => {
-          setShowPrize(false);
-          handlePlayAgain();
-        }}
-        onWagerForTicket={() => {
-          setShowPrize(false);
-          setShowTicketOffer(true);
-        }}
-      />
-      <WinOfferModal
-        open={showTicketOffer && !showPrize}
-        offer={ticketOffer}
-        onClose={() => {
-          setShowTicketOffer(false);
-          setTicketOffer(null);
-        }}
-      />
     </div>
   );
 }

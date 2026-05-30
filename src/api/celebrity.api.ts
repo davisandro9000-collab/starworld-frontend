@@ -1,3 +1,4 @@
+// src/api/celebrity.api.ts
 import { api } from './axios';
 
 export interface Celebrity {
@@ -48,10 +49,12 @@ export async function getCelebrity(slug: string): Promise<Celebrity> {
 
 export async function getCelebNews(slug: string): Promise<NewsArticle[]> {
   const { data } = await api.get(`/celebrities/${slug}/news`);
+  // Backend returns { celebrity, articles }
   return data.articles || [];
 }
 
 export async function getCelebEvents(slug: string): Promise<Event[]> {
   const { data } = await api.get(`/celebrities/${slug}/events`);
+  // Backend returns { success, celebrity, events }
   return data.events || [];
 }

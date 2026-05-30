@@ -26,9 +26,9 @@ export const login = async (email: string, password: string): Promise<LoginRespo
   return data;
 };
 
-export const register = async (username: string, email: string, password: string) => {
-  const { data } = await api.post('/auth/register', { username, email, password });
-  return data;
+export const register = async (data: { username: string; email: string; password: string; referralCode?: string }) => {
+  const { data: response } = await api.post('/auth/register', data);
+  return response;
 };
 
 export const refreshToken = async () => {

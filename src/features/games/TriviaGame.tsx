@@ -84,52 +84,48 @@ export default function TriviaGame({ celebrityId, onClose }: { celebrityId?: str
 
   if (result) {
     return (
-      <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-        <div className="bg-sw-card rounded-2xl p-6 max-w-md w-full text-center">
-          <p className="text-2xl font-bold text-gold mb-2">
-            {result.won ? `🎉 You won ${result.coinsEarned} coins!` : `😢 You got ${result.consolationCoins} consolation coins.`}
-          </p>
-          {result.prize && <p className="text-white">🏆 Prize: {result.prize.label}</p>}
-          <button onClick={onClose} className="btn-gold w-full mt-4">Close</button>
-        </div>
+      <div className="text-center space-y-4">
+        <p className="text-2xl font-bold text-gold">
+          {result.won ? `🎉 You won ${result.coinsEarned} coins!` : `😢 You got ${result.consolationCoins} consolation coins.`}
+        </p>
+        {result.prize && <p className="text-white">🏆 Prize: {result.prize.label}</p>}
+        <button onClick={onClose} className="btn-gold w-full">Close</button>
       </div>
     );
   }
 
   if (start.isPending) {
-    return (
-      <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-        <Spinner size="lg" />
-      </div>
-    );
+    return <div className="flex justify-center py-10"><Spinner size="lg" /></div>;
   }
 
   if (!sessionId) {
     return (
-      <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-        <div className="bg-sw-card rounded-2xl p-6 max-w-md w-full">
-          <h2 className="font-heading font-bold text-xl text-white mb-4">🧠 Trivia Challenge</h2>
-          <button onClick={() => start.mutate()} className="btn-gold w-full">Start Game</button>
-          <button onClick={onClose} className="btn-outline w-full mt-2">Cancel</button>
-        </div>
+      <div className="text-center space-y-4">
+        <h2 className="font-heading font-bold text-xl text-white">🧠 Trivia Challenge</h2>
+        <button onClick={() => start.mutate()} className="btn-gold w-full">Start Game</button>
+        <button onClick={onClose} className="btn-outline w-full">Cancel</button>
       </div>
     );
   }
 
+  // Guard against out‑of‑bounds index (should not happen)
+  if (current >= QUESTIONS.length) {
+    return <div className="flex justify-center py-10"><Spinner size="lg" /></div>;
+  }
+
   const q = QUESTIONS[current];
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-      <div className="bg-sw-card rounded-2xl p-6 max-w-md w-full">
-        <h2 className="font-heading font-bold text-xl text-white mb-2">Question {current+1}/{QUESTIONS.length}</h2>
-        <p className="text-white mb-4">{q.question}</p>
-        <div className="space-y-2">
-          {q.options.map((opt, idx) => (
-            <button key={idx} onClick={() => handleAnswer(idx)} className="btn-outline w-full text-left px-4 py-2">
-              {opt}
-            </button>
-          ))}
-        </div>
+    <div className="space-y-4">
+      <h2 className="font-heading font-bold text-xl text-white">Question {current+1}/{QUESTIONS.length}</h2>
+      <p className="text-white">{q.question}</p>
+      <div className="space-y-2">
+        {q.options.map((opt, idx) => (
+          <button key={idx} onClick={() => handleAnswer(idx)} className="btn-outline w-full text-left px-4 py-2">
+            {opt}
+          </button>
+        ))}
       </div>
+      <button onClick={onClose} className="btn-outline w-full mt-2">Cancel</button>
     </div>
   );
 }

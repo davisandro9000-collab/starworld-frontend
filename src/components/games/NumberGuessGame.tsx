@@ -1,71 +1,173 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { startGameSession, completeGameSession, GameResult } from '../../api/game.api';
-import { useNotifStore } from '../../stores/notifStore';
-import Spinner from '../ui/Spinner';
+import { motion, AnimatePresence } from 'framer-motion';
+import { startGameSession, completeGameSession, type GameResult } from '../../api/game.api';
+import { useGameStore } from '../../stores/gameStore';
+import { useCoinStore } from '../../stores/coinStore';
+import { cn } from '../../lib/utils';
+import Spinner from '../../components/ui/Spinner';
 
-export default function NumberGuessGame({ celebrityId, onClose }: { celebrityId?: string; onClose: () => void }) {
+interface NumberGuessProps {
+  celebrityId?: string;
+  onClose: () => void;
+}
+
+const MAX_RANGE = 100;
+const MAX_GUESSES = 7;
+
+function getHint(guess: number, target: number): 'too-low' | 'too-high' | 'correct' {
+  if (guess === target) return 'correct';
+  return guess < target ? 'too-low' : 'too-high';
+}
+
+export default function NumberGuess({ celebrityId, onClose }: NumberGuessProps) {
+  const { setLastResult, incrementGamesPlayed } = useGameStore();
+  const { balance, setBalance } = useCoinStore();
+
+  const [starting, setStarting] = useState(true);
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [result, setResult] = useState<GameResult | null>(null);
-  const addNotification = useNotifStore((state) => state.addNotification);
+  const [target] = useState(() => Math.floor(Math.random() * MAX_RANGE) + 1);
+  const [input, setInput] = useState('');
+  const [guesses, setGuesses] = useState<{ value: number; hint: ReturnType<typeof getHint> }[]>([]);
+  const [gameOver, setGameOver] = useState(false);
+  const [won, setWon] = useState(false);
+  const attemptsRef = { current: 0 };
 
-  const start = useMutation({
+  const startMutation = useMutation({
     mutationFn: () => startGameSession({ gameType: 'number_guess', celebrityId }),
-    onSuccess: (session: any) => setSessionId(session.sessionId),
-  });
-  const complete = useMutation({
-    mutationFn: () => completeGameSession(sessionId!, { guess: 50, attempts: 1 }),
-    onSuccess: (data: GameResult) => {
-      setResult(data);
-      addNotification({
-        id: Date.now().toString(),
-        type: 'game_result',
-        title: data.won ? 'You won!' : 'Game over',
-        body: data.won ? `You won ${data.coinsEarned} coins!` : `You got ${data.consolationCoins} consolation coins.`,
-        priority: 'normal',
-        read: false,
-        createdAt: new Date().toISOString(),
-      });
+    onSuccess: (data: any) => {
+      const id = data.session?.id || data.sessionId;
+      setSessionId(id);
+      setStarting(false);
+    },
+    onError: (err) => {
+      console.error('Start number guess error:', err);
+      onClose();
     },
   });
 
-  if (result) {
+  useEffect(() => {
+    startMutation.mutate();
+  }, []);
+
+  const completeMutation = useMutation({
+    mutationFn: ({ isWon, attemptCount }: { isWon: boolean; attemptCount: number }) =>
+      completeGameSession(sessionId!, { attempts: attemptCount, guess: target }),
+    onSuccess: (data: GameResult) => {
+      setLastResult(data);
+      incrementGamesPlayed();
+      const earned = data.coinsEarned + (data.consolationCoins ?? 0);
+      setBalance(balance + earned);
+      onClose(); // close after result
+    },
+    onError: (err) => {
+      console.error('Complete number guess error:', err);
+      onClose();
+    },
+  });
+
+  function handleGuess() {
+    const val = parseInt(input, 10);
+    if (isNaN(val) || val < 1 || val > MAX_RANGE || gameOver) return;
+    setInput('');
+
+    const hint = getHint(val, target);
+    const next = [...guesses, { value: val, hint }];
+    setGuesses(next);
+    attemptsRef.current = next.length;
+
+    const isWon = hint === 'correct';
+    const isLost = !isWon && next.length >= MAX_GUESSES;
+
+    if (isWon || isLost) {
+      setGameOver(true);
+      setWon(isWon);
+      completeMutation.mutate({ isWon, attemptCount: next.length });
+    }
+  }
+
+  if (starting) {
+    return <div className="flex justify-center py-10"><Spinner size="lg" /></div>;
+  }
+
+  const remaining = MAX_GUESSES - guesses.length;
+  const lo = guesses.filter(g => g.hint === 'too-low').reduce((m, g) => Math.max(m, g.value), 0);
+  const hi = guesses.filter(g => g.hint === 'too-high').reduce((m, g) => Math.min(m, g.value), MAX_RANGE + 1);
+
+  if (gameOver && !completeMutation.isPending) {
     return (
-      <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-        <div className="bg-sw-card p-6 rounded-2xl text-center">
-          <p className="text-gold text-2xl">
-            {result.won ? `Won ${result.coinsEarned} coins` : `Consolation ${result.consolationCoins} coins`}
-          </p>
-          {result.prize && <p className="text-white">Prize: {result.prize.label}</p>}
-          <button onClick={onClose} className="btn-gold mt-4">Close</button>
-        </div>
+      <div className="text-center space-y-4">
+        <p className="text-gold text-xl">{won ? '🎉 You won!' : '😢 Out of guesses'}</p>
+        {won ? <p className="text-white">You guessed correctly!</p> : <p className="text-white">The number was {target}</p>}
+        <button onClick={onClose} className="btn-gold w-full">Close</button>
       </div>
     );
   }
 
-  if (start.isPending || complete.isPending) {
-    return (
-      <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-        <Spinner size="lg" />
-      </div>
-    );
-  }
-
-  if (!sessionId) {
-    return (
-      <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-        <div className="bg-sw-card p-6 rounded-2xl">
-          <button onClick={() => start.mutate()} className="btn-gold">Start Number Guess</button>
-          <button onClick={onClose} className="btn-outline mt-2">Cancel</button>
-        </div>
-      </div>
-    );
+  if (completeMutation.isPending) {
+    return <div className="flex justify-center py-10"><Spinner size="lg" /></div>;
   }
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-      <button onClick={() => complete.mutate()} className="btn-gold">Submit Guess</button>
-      <button onClick={onClose} className="btn-outline mt-2">Cancel</button>
+    <div className="space-y-4">
+      <div className="text-center">
+        <p className="text-sm text-gray-400">Guess a number between <span className="text-white">1 – {MAX_RANGE}</span></p>
+        <p className="text-xs text-gray-500">{remaining} guess{remaining !== 1 ? 'es' : ''} remaining</p>
+      </div>
+
+      <div className="card p-3">
+        <p className="text-[11px] text-gray-500 uppercase">Known range</p>
+        <div className="relative h-2 bg-sw-bg rounded-full overflow-hidden">
+          <motion.div
+            className="absolute h-full bg-gold/60 rounded-full"
+            animate={{
+              left: `${(lo / MAX_RANGE) * 100}%`,
+              right: `${((MAX_RANGE - hi + 1) / MAX_RANGE) * 100}%`,
+            }}
+            transition={{ duration: 0.3 }}
+          />
+        </div>
+        <div className="flex justify-between text-[10px] text-gray-600">
+          <span>{lo > 0 ? `>${lo}` : '1'}</span>
+          <span>{hi <= MAX_RANGE ? `<${hi}` : MAX_RANGE}</span>
+        </div>
+      </div>
+
+      <div className="space-y-1 min-h-[80px]">
+        <AnimatePresence>
+          {guesses.map((g, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, x: -12 }}
+              animate={{ opacity: 1, x: 0 }}
+              className={cn('flex justify-between rounded-lg px-3 py-2 text-sm card', g.hint === 'correct' && 'border-win/30 bg-win/10')}
+            >
+              <span className="font-bold text-white">{g.value}</span>
+              <span className={cn('text-xs', g.hint === 'correct' ? 'text-win' : g.hint === 'too-low' ? 'text-amber-400' : 'text-sky-400')}>
+                {g.hint === 'correct' ? '✓ Correct!' : g.hint === 'too-low' ? '↑ Too low' : '↓ Too high'}
+              </span>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+
+      {!gameOver && (
+        <div className="flex gap-2">
+          <input
+            type="number"
+            min={1}
+            max={MAX_RANGE}
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleGuess()}
+            placeholder="1–100"
+            className="input-sw flex-1 text-center text-lg font-bold"
+          />
+          <button onClick={handleGuess} className="btn-gold px-5">Guess</button>
+        </div>
+      )}
+
+      <button onClick={onClose} className="btn-outline w-full mt-2">Cancel</button>
     </div>
   );
 }

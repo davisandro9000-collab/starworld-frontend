@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../api/axios';
 import Spinner from '../components/ui/Spinner';
 import { Link } from 'react-router-dom';
+import { placeholders, getSafeImageUrl } from '../lib/placeholders';
 
 interface Celebrity {
   id: string;
@@ -12,7 +13,6 @@ interface Celebrity {
 
 const fetchCelebrities = async (): Promise<Celebrity[]> => {
   const response = await api.get('/celebrities');
-  // Backend returns { success: true, celebrities: [...] }
   return response.data.celebrities || [];
 };
 
@@ -44,23 +44,29 @@ export default function GamesPage() {
       <p className="text-white/40 text-sm mb-6">Pick a celebrity to play games and earn coins</p>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {celebrities.map((celeb) => (
-          <Link
-            key={celeb.id}
-            to={`/star/${celeb.slug}`}
-            className="card-hover p-4 text-center transition-all hover:-translate-y-1"
-          >
-            <div className="w-20 h-20 mx-auto rounded-full bg-sw-card-2 flex items-center justify-center text-3xl mb-3">
-              {celeb.avatarUrl ? (
-                <img src={celeb.avatarUrl} alt={celeb.name} className="w-full h-full rounded-full object-cover" />
-              ) : (
-                '⭐'
-              )}
-            </div>
-            <h3 className="font-heading font-semibold text-white">{celeb.name}</h3>
-            <p className="text-xxs text-white/40 mt-1">Play games & win prizes</p>
-          </Link>
-        ))}
+        {celebrities.map((celeb) => {
+          const avatarUrl = getSafeImageUrl(celeb.avatarUrl, 'celebrityAvatar');
+          return (
+            <Link
+              key={celeb.id}
+              to={`/star/${celeb.slug}`}
+              className="card-hover p-4 text-center transition-all hover:-translate-y-1"
+            >
+              <div className="w-20 h-20 mx-auto rounded-full bg-sw-card-2 flex items-center justify-center text-3xl mb-3 overflow-hidden">
+                <img
+                  src={avatarUrl}
+                  alt={celeb.name}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.src = placeholders.celebrityAvatar(celeb.name);
+                  }}
+                />
+              </div>
+              <h3 className="font-heading font-semibold text-white">{celeb.name}</h3>
+              <p className="text-xxs text-white/40 mt-1">Play games & win prizes</p>
+            </Link>
+          );
+        })}
       </div>
     </div>
   );

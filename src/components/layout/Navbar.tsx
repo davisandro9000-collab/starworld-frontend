@@ -4,6 +4,7 @@ import { useAuthStore } from '../../stores/authStore';
 import TierBadge from '../ui/TierBadge';
 import NotificationBell from '../ui/NotificationBell';
 import { api } from '../../api/axios';
+import { placeholders } from '../../lib/placeholders';
 
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -28,7 +29,6 @@ export default function Navbar() {
     }
   };
 
-  // Safe balance display – fallback to 0 if undefined or null
   const balance = user?.coinBalance ?? 0;
 
   return (
@@ -60,7 +60,6 @@ export default function Navbar() {
         <div className="ml-auto flex items-center gap-2.5">
           {user ? (
             <>
-              {/* Coin balance – direct display to avoid NaN */}
               <div className="flex items-center gap-1.5 bg-sw-bg/50 rounded-full px-3 py-1.5 border border-sw-border">
                 <span className="text-xs text-gold">🪙</span>
                 <span className="font-heading font-semibold text-sm text-white">
@@ -74,10 +73,17 @@ export default function Navbar() {
 
               <div className="relative group">
                 <button
-                  className="w-8 h-8 rounded-full bg-gold-gradient flex items-center justify-center text-sw-bg font-heading font-bold text-xs shrink-0 hover:shadow-gold-sm transition-shadow"
+                  className="w-8 h-8 rounded-full bg-gold-gradient flex items-center justify-center text-sw-bg font-heading font-bold text-xs shrink-0 hover:shadow-gold-sm transition-shadow overflow-hidden"
                   aria-label="Account menu"
                 >
-                  {user.displayName?.[0]?.toUpperCase() ?? user.username?.[0]?.toUpperCase() ?? 'U'}
+                  <img
+                    src={user.avatarUrl || placeholders.userAvatar(user.username)}
+                    alt="avatar"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.src = placeholders.userAvatar(user.username);
+                    }}
+                  />
                 </button>
 
                 <div className="absolute right-0 top-full mt-2 w-44 glass rounded-sw-lg py-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 shadow-card">

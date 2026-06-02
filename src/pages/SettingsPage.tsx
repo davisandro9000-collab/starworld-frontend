@@ -8,11 +8,12 @@ import { cn } from '../lib/utils'
 import { useAuthStore } from '../stores/authStore'
 import { updateProfile, sendPasswordResetEmail } from '../api/user.api'
 import Input from '../components/ui/Input'
-import { Button } from '../components/ui/Button'   // ✅ named export
+import { Button } from '../components/ui/Button'
 import TierBadge from '../components/ui/TierBadge'
 import DepositForm from '../features/coins/DepositForm'
 import DepositStatus from '../features/coins/DepositStatus'
 import ReferralDash from '../features/referrals/ReferralDash'
+import { placeholders } from '../lib/placeholders'
 
 // ─── Types / schemas ──────────────────────────────────────────────────────────
 
@@ -66,28 +67,26 @@ function ProfileTab() {
     },
   })
 
-  // Avatar initials
-  const initials = (user?.username ?? '?')[0]?.toUpperCase() ?? '?'
+  const avatarUrl = user?.avatarUrl || placeholders.userAvatar(user?.username)
 
   return (
     <form
       onSubmit={handleSubmit(v => mutation.mutate(v))}
       className="space-y-5 max-w-sm"
     >
-      {/* Avatar row */}
       <div className="flex items-center gap-4">
-        <div
-          className="w-16 h-16 rounded-full bg-gold/15 border-2 border-gold/30 flex items-center justify-center text-2xl font-heading font-bold text-gold select-none flex-shrink-0"
-        >
-          {initials}
-        </div>
+        <img
+          src={avatarUrl}
+          alt="Avatar"
+          className="w-16 h-16 rounded-full object-cover border-2 border-gold/30"
+          onError={(e) => { e.currentTarget.src = placeholders.userAvatar(user?.username); }}
+        />
         <div>
           <p className="text-sm font-semibold text-white mb-1">{user?.username}</p>
           <TierBadge tier={user?.tier?.slug ?? 'bronze'} />
         </div>
       </div>
 
-      {/* Fields */}
       <Input
         label="Display name"
         placeholder="How you appear on leaderboards"
@@ -104,7 +103,6 @@ function ProfileTab() {
         hint="Email address cannot be changed"
       />
 
-      {/* Coin balance (read-only) */}
       <div className="card p-4 flex items-center justify-between">
         <span className="text-sm text-white/50">Coin balance</span>
         <span className="font-heading font-bold text-gold">
@@ -138,7 +136,6 @@ function DepositsTab() {
 
   return (
     <div className="space-y-5">
-      {/* Sub-tabs */}
       <div className="flex gap-1 p-1 bg-[#111527] rounded-xl w-fit">
         {[
           { id: true,  label: 'New deposit' },
@@ -198,7 +195,6 @@ function SecurityTab() {
 
   return (
     <div className="space-y-4 max-w-sm">
-      {/* Password reset */}
       <div className="card p-5 space-y-3">
         <p className="text-sm font-semibold text-white">Change password</p>
         <p className="text-xs text-white/40 leading-relaxed">
@@ -222,7 +218,6 @@ function SecurityTab() {
         )}
       </div>
 
-      {/* 2FA */}
       <div className="card p-5 space-y-3">
         <p className="text-sm font-semibold text-white">Two-factor authentication</p>
         <p className="text-xs text-white/40 leading-relaxed">
@@ -233,7 +228,6 @@ function SecurityTab() {
         </span>
       </div>
 
-      {/* Danger zone */}
       <div className="card p-5 space-y-3 border-[#FF4560]/20">
         <p className="text-sm font-semibold text-[#FF4560]">Danger zone</p>
         <p className="text-xs text-white/40 leading-relaxed">
@@ -262,7 +256,6 @@ function SecurityTab() {
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<TabId>('profile')
 
-  // ✅ React.ReactElement instead of JSX.Element (no JSX namespace needed)
   const tabContent: Record<TabId, React.ReactElement> = {
     profile:   <ProfileTab />,
     deposits:  <DepositsTab />,
@@ -276,7 +269,6 @@ export default function SettingsPage() {
         Settings
       </h1>
 
-      {/* Tab bar */}
       <div className="flex gap-1 bg-[#13172B] rounded-xl p-1 mb-6 overflow-x-auto">
         {TABS.map(tab => (
           <button
@@ -295,7 +287,6 @@ export default function SettingsPage() {
         ))}
       </div>
 
-      {/* Tab content with Framer Motion */}
       <AnimatePresence mode="wait">
         <motion.div
           key={activeTab}

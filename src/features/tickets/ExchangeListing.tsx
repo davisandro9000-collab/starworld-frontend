@@ -1,7 +1,7 @@
-// src/features/tickets/ExchangeListing.tsx
 import { Link } from 'react-router-dom'
 import AuctionTimer from './AuctionTimer'
 import { ExchangeListing } from '../../api/ticket.api'
+import { placeholders } from '../../lib/placeholders'
 
 interface Props {
   listing: ExchangeListing
@@ -25,8 +25,9 @@ export default function ExchangeListingCard({ listing, compact = false }: Props)
   const isSold    = listing.status === 'sold'
   const isExpired = listing.status === 'expired' || listing.status === 'cancelled'
 
-  // auctionEndsAt is the backend's expiresAt
   const auctionEndsAt = isAuction && listing.auctionEndsAt ? listing.auctionEndsAt : null
+
+  const imageUrl = listing.ticketImageUrl || placeholders.ticket
 
   return (
     <Link
@@ -36,15 +37,12 @@ export default function ExchangeListingCard({ listing, compact = false }: Props)
       }`}
     >
       <div className="relative h-32 bg-sw-card-2 flex items-center justify-center overflow-hidden">
-        {listing.ticketImageUrl ? (
-          <img
-            src={listing.ticketImageUrl}
-            alt={listing.eventName}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <span className="text-4xl opacity-40">🎫</span>
-        )}
+        <img
+          src={imageUrl}
+          alt={listing.eventName}
+          className="w-full h-full object-cover"
+          onError={(e) => { e.currentTarget.src = placeholders.ticket; }}
+        />
 
         {isSold && (
           <div className="absolute inset-0 bg-black/60 flex items-center justify-center">

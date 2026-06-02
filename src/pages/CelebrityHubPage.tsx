@@ -1,21 +1,22 @@
-import { useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { getCelebrity, getCelebNews, getCelebEvents, type Celebrity } from '../api/celebrity.api'
-import Spinner from '../components/ui/Spinner'
-import TierBadge from '../components/ui/TierBadge'
-import { useAuthStore } from '../stores/authStore'
-import { cn } from '../lib/utils'
-import GameModal from '../components/games/GameModal'
+import { useState, useEffect } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { getCelebrity, getCelebNews, getCelebEvents, type Celebrity } from '../api/celebrity.api';
+import Spinner from '../components/ui/Spinner';
+import TierBadge from '../components/ui/TierBadge';
+import { useAuthStore } from '../stores/authStore';
+import { cn } from '../lib/utils';
+import GameModal from '../components/games/GameModal';
+import { placeholders, getSafeImageUrl } from '../lib/placeholders';
 
-type Tab = 'games' | 'bio' | 'news' | 'tickets'
+type Tab = 'games' | 'bio' | 'news' | 'tickets';
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'games',   label: 'Games',   icon: '🎮' },
   { id: 'bio',     label: 'Bio',     icon: '⭐' },
   { id: 'news',    label: 'News',    icon: '📰' },
   { id: 'tickets', label: 'Tickets', icon: '🎫' },
-]
+];
 
 const GAMES = [
   { id: 'spin',        icon: '🎰', name: 'Spin Wheel',    reward: 'Win prizes',      color: 'from-gold/20 to-gold-dim/10',    border: 'border-gold/30' },
@@ -24,10 +25,9 @@ const GAMES = [
   { id: 'hangman',     icon: '🎯', name: 'Hangman',       reward: '+60 coins/win',   color: 'from-win/20 to-win/10',          border: 'border-win/30' },
   { id: 'word',        icon: '🔤', name: 'Word Scramble', reward: '+40 coins/win',   color: 'from-orange-500/20 to-orange-600/10', border: 'border-orange-500/30' },
   { id: 'number',      icon: '🔢', name: 'Number Guess',  reward: '+100 coins/win',  color: 'from-pink-500/20 to-pink-700/10', border: 'border-pink-500/30' },
-]
+];
 
 function GamesTab({ onSelectGame }: { onSelectGame: (gameId: string) => void }) {
-  console.log('[GamesTab] rendered');
   return (
     <div className="space-y-6">
       <div className="card-gold p-5 rounded-sw-lg flex items-center justify-between gap-4">
@@ -36,13 +36,7 @@ function GamesTab({ onSelectGame }: { onSelectGame: (gameId: string) => void }) 
           <h3 className="font-heading font-bold text-lg text-gold mb-1">🎰 Daily Spin</h3>
           <p className="text-sm text-white/50">Spin the wheel for a chance to win cash, tickets &amp; prizes</p>
         </div>
-        <button
-          className="btn-gold shrink-0 text-sm px-5 py-2.5"
-          onClick={() => {
-            console.log('[Spin Now] button clicked, calling onSelectGame with "spin"');
-            onSelectGame('spin');
-          }}
-        >
+        <button className="btn-gold shrink-0 text-sm px-5 py-2.5" onClick={() => onSelectGame('spin')}>
           Spin Now
         </button>
       </div>
@@ -56,10 +50,7 @@ function GamesTab({ onSelectGame }: { onSelectGame: (gameId: string) => void }) 
           {GAMES.filter(g => g.id !== 'spin').map(game => (
             <button
               key={game.id}
-              onClick={() => {
-                console.log(`[Game button] clicked: ${game.id}`);
-                onSelectGame(game.id);
-              }}
+              onClick={() => onSelectGame(game.id)}
               className={cn(
                 'card-hover p-4 text-center rounded-sw-lg border bg-gradient-to-br',
                 game.color, game.border,
@@ -90,10 +81,42 @@ function GamesTab({ onSelectGame }: { onSelectGame: (gameId: string) => void }) 
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 function BioTab({ celeb }: { celeb: Celebrity }) {
+  const [wikiSummary, setWikiSummary] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    async function fetchWikipedia() {
+      if (!celeb.name) return;
+      setLoading(true);
+      setError(false);
+      try {
+        const response = await fetch(
+          `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(celeb.name)}`
+        );
+        const data = await response.json();
+        if (data.extract && !data.extract.includes('may refer to')) {
+          setWikiSummary(data.extract);
+        } else {
+          setWikiSummary(null);
+        }
+      } catch (err) {
+        console.error('Wikipedia fetch error:', err);
+        setError(true);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchWikipedia();
+  }, [celeb.name]);
+
+  const displayBio = wikiSummary || celeb.bio;
+  const hasContent = displayBio && displayBio.trim() !== '';
+
   return (
     <div className="space-y-4">
       <div className="card p-5 rounded-sw-lg">
@@ -101,9 +124,24 @@ function BioTab({ celeb }: { celeb: Celebrity }) {
           <span className="text-gold font-heading font-semibold text-sm">About</span>
           {celeb.genre && <span className="badge-live text-xxs px-2 py-0.5">{celeb.genre}</span>}
         </div>
-        <p className="text-white/70 text-sm font-body leading-relaxed">
-          {celeb.bio ?? `${celeb.name} is one of the world's most celebrated entertainers. Follow their world on StarWorld to earn coins, win prizes, and get exclusive access to concert tickets.`}
-        </p>
+        {loading ? (
+          <div className="flex justify-center py-4">
+            <Spinner size="sm" />
+          </div>
+        ) : error ? (
+          <p className="text-white/50 text-sm font-body">
+            Could not load biography from Wikipedia. {hasContent ? 'Here is our info:' : ''}
+          </p>
+        ) : null}
+        {hasContent ? (
+          <p className="text-white/70 text-sm font-body leading-relaxed">{displayBio}</p>
+        ) : (
+          !loading && (
+            <p className="text-white/40 text-sm font-body">
+              {celeb.name} is one of the world's most celebrated entertainers.
+            </p>
+          )
+        )}
       </div>
 
       <div className="card p-5 rounded-sw-lg">
@@ -122,7 +160,7 @@ function BioTab({ celeb }: { celeb: Celebrity }) {
         </ul>
       </div>
     </div>
-  )
+  );
 }
 
 function NewsTab({ slug }: { slug: string }) {
@@ -206,9 +244,6 @@ export default function CelebrityHubPage() {
   const [selectedGame, setSelectedGame] = useState<string | null>(null);
   const user = useAuthStore((s) => s.user);
 
-  console.log('🔍 CelebrityHubPage slug:', slug);
-  console.log('🔍 selectedGame:', selectedGame);
-
   const { data: celeb, isLoading, isError } = useQuery({
     queryKey: ['celebrity', slug],
     queryFn: () => getCelebrity(slug!),
@@ -232,14 +267,25 @@ export default function CelebrityHubPage() {
     <div className="min-h-screen">
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-sw-card to-sw-bg" aria-hidden="true">
-          {celeb.bannerUrl && <img src={celeb.bannerUrl} alt="" className="w-full h-full object-cover opacity-20" />}
+          {celeb.bannerUrl ? (
+            <img src={celeb.bannerUrl} alt="" className="w-full h-full object-cover opacity-20" />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-b from-sw-card to-sw-bg" />
+          )}
           <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-sw-bg to-transparent" />
         </div>
         <div className="relative page-content pt-8 pb-6">
           <div className="flex items-end gap-5">
             <div className="relative shrink-0">
               <div className="w-20 h-20 md:w-24 md:h-24 rounded-sw-xl border-2 border-gold/40 overflow-hidden bg-sw-card-2 shadow-gold">
-                {celeb.avatarUrl ? <img src={celeb.avatarUrl} alt={celeb.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-3xl">⭐</div>}
+                <img
+                  src={getSafeImageUrl(celeb.avatarUrl, 'celebrityAvatar')}
+                  alt={celeb.name}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.src = placeholders.celebrityAvatar(celeb.name);
+                  }}
+                />
               </div>
               <span className="absolute -bottom-1 -right-1 badge-live text-xxs px-1.5 py-0.5">LIVE</span>
             </div>
@@ -278,25 +324,13 @@ export default function CelebrityHubPage() {
       </div>
 
       <div className="page-content pt-5 pb-10">
-        {activeTab === 'games' && <GamesTab onSelectGame={(gameId) => {
-          console.log('[Parent] onSelectGame called with:', gameId);
-          setSelectedGame(gameId);
-        }} />}
+        {activeTab === 'games' && <GamesTab onSelectGame={setSelectedGame} />}
         {activeTab === 'bio' && <BioTab celeb={celeb} />}
         {activeTab === 'news' && <NewsTab slug={celeb.slug} />}
         {activeTab === 'tickets' && <TicketsTab slug={celeb.slug} celebName={celeb.name} />}
       </div>
 
-      {selectedGame && (
-        <GameModal
-          gameType={selectedGame as any}
-          celebrityId={celeb.id}
-          onClose={() => {
-            console.log('[GameModal] onClose called');
-            setSelectedGame(null);
-          }}
-        />
-      )}
+      {selectedGame && <GameModal gameType={selectedGame as any} celebrityId={celeb.id} onClose={() => setSelectedGame(null)} />}
     </div>
   );
 }

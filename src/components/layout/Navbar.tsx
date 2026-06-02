@@ -34,8 +34,14 @@ export default function Navbar() {
   return (
     <header className="fixed top-0 left-0 right-0 z-navbar h-navbar bg-sw-card border-b border-sw-border shadow-inner-top">
       <div className="max-w-7xl mx-auto h-full px-4 flex items-center gap-4">
+        {/* Logo – new attractive design */}
         <Link to="/" className="flex items-center gap-2 shrink-0">
-          <span className="text-lg font-heading font-bold text-gold-gradient">⭐ StarWorld</span>
+          <div className="w-8 h-8 rounded flex items-center justify-center font-heading font-black text-xs" style={{ background: 'linear-gradient(135deg, #FFD700, #E8A020)', color: '#080C18' }}>
+            SW
+          </div>
+          <span className="font-heading font-black text-white text-lg tracking-tight">
+            STAR<span style={{ color: '#FFD700' }}>WORLD</span>
+          </span>
         </Link>
 
         <nav className="hidden md:flex items-center gap-1 ml-2">

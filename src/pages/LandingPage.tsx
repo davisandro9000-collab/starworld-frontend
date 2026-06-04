@@ -6,6 +6,7 @@ import { FaFacebook, FaTwitter, FaYoutube, FaInstagram } from 'react-icons/fa'
 import Navbar from '../components/layout/Navbar'
 import { useAuthStore } from '../stores/authStore'
 import { getAllCelebrities, type Celebrity } from '../api/celebrity.api'
+import { getPromotions, type Promotion } from '../api/promotion.api'
 import Spinner from '../components/ui/Spinner'
 import { placeholders } from '../lib/placeholders'
 
@@ -17,31 +18,36 @@ const PRIZE_TIERS = [
   { icon: '₿',  label: 'CRYPTO',      desc: 'BTC, ETH, USDT payouts.',       accent: '#F7931A' },
 ]
 
-const GIVEAWAY_CARDS = [
-  {
-    label: 'WEEKLY GIVEAWAY',
-    desc: 'Win a video call with your favourite celebrity every Thursday. Available on mobile and web.',
-    img: 'https://placehold.co/800x400?text=Weekly+Giveaway',
-    accent: '#FFD700',
-  },
-  {
-    label: 'CRYPTO JACKPOT',
-    desc: 'Platinum tier players compete weekly for 0.01 BTC. Top 3 spin wheel winners qualify.',
-    img: 'https://placehold.co/800x400?text=Crypto+Jackpot',
-    accent: '#F7931A',
-  },
-]
+/* ─── Default hero content (used if no hero promotion is active) ─── */
+const DEFAULT_HERO = {
+  title: (
+    <>
+      PLAY. <span style={{ color: '#FFD700' }}>WIN.</span>
+      <br />
+      MEET YOUR
+      <br />
+      <span style={{
+        WebkitTextStroke: '1px rgba(255,255,255,0.4)',
+        color: 'transparent',
+        textShadow: 'none',
+      }}>
+        CELEBRITY
+      </span>
+    </>
+  ),
+  description: 'TRIVIA · GAMES · SPIN TO WIN — REAL PRIZES FROM CASH AND CRYPTO TO VIDEO CALLS AND DINNER DATES WITH HOLLYWOOD STARS.',
+  imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/Zendaya_2019_by_Glenn_Francis.jpg/800px-Zendaya_2019_by_Glenn_Francis.jpg',
+  ctaText: 'START FOR FREE',
+  ctaLink: '/auth/register',
+};
 
 /* ─── Helper: redirect based on auth ───────────────────────── */
 const useAuthRedirect = () => {
   const { user } = useAuthStore()
   const navigate = useNavigate()
   const handleRedirect = () => {
-    if (user) {
-      navigate('/dashboard')
-    } else {
-      navigate('/auth/register')
-    }
+    if (user) navigate('/dashboard')
+    else navigate('/auth/register')
   }
   return handleRedirect
 }
@@ -49,7 +55,7 @@ const useAuthRedirect = () => {
 /* ─── Celebrity grid card ───────────────────────────────────── */
 function CelebCard({ celeb, onPick }: { celeb: Celebrity; onPick: () => void }) {
   const [hov, setHov] = useState(false)
-  const accent = '#FFD700' // default gold, could be per‑tier in future
+  const accent = '#FFD700'
   const imageUrl = celeb.avatarUrl || placeholders.celebrityAvatar(celeb.name)
 
   return (
@@ -77,18 +83,15 @@ function CelebCard({ celeb, onPick }: { celeb: Celebrity; onPick: () => void }) 
           onError={(e) => { e.currentTarget.src = placeholders.celebrityAvatar(celeb.name) }}
         />
         <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, #080C18 30%, rgba(8,12,24,0.2) 70%, transparent)' }} />
-
         <span
           className="absolute top-2.5 left-2.5 text-[9px] font-heading font-black tracking-[2px] px-2 py-0.5"
           style={{ background: accent, color: '#080C18', borderRadius: '2px' }}
         >
           FREE
         </span>
-
         <span className="absolute top-2.5 right-2.5 text-[10px] text-white/60 flex items-center gap-1 bg-black/50 backdrop-blur-sm px-1.5 py-0.5 rounded">
           <Users size={8} /> PLAY
         </span>
-
         <div
           className="absolute inset-x-0 bottom-0 p-3 transition-all duration-250"
           style={{ opacity: hov ? 1 : 0, transform: hov ? 'translateY(0)' : 'translateY(6px)' }}
@@ -101,7 +104,6 @@ function CelebCard({ celeb, onPick }: { celeb: Celebrity; onPick: () => void }) 
           </button>
         </div>
       </div>
-
       <div className="px-3 pt-2.5 pb-3">
         <p className="font-heading font-bold text-white text-sm leading-tight truncate">{celeb.name}</p>
         <p className="text-[11px] mt-0.5 mb-2 truncate" style={{ color: 'rgba(255,255,255,0.4)' }}>
@@ -121,29 +123,41 @@ export default function LandingPage() {
   const { user } = useAuthStore()
   const handleCta = useAuthRedirect()
 
-  const { data: celebrities, isLoading, error } = useQuery({
+  // Fetch promotions
+  const { data: promotions = [], isLoading: promoLoading } = useQuery({
+    queryKey: ['promotions'],
+    queryFn: getPromotions,
+    staleTime: 5 * 60 * 1000,
+  })
+
+  // Fetch celebrities
+  const { data: celebrities, isLoading: celebLoading, error: celebError } = useQuery({
     queryKey: ['celebrities-landing'],
     queryFn: getAllCelebrities,
     staleTime: 5 * 60 * 1000,
   })
 
   const handleCelebrityClick = (slug: string) => {
-    if (user) {
-      navigate(`/star/${slug}`)
-    } else {
-      navigate('/auth/register')
-    }
+    if (user) navigate(`/star/${slug}`)
+    else navigate('/auth/register')
   }
+
+  // Extract active hero and card promotions
+  const heroPromo = promotions.find((p: Promotion) => p.type === 'hero' && p.isActive)
+  const cardPromos = promotions.filter((p: Promotion) => p.type === 'card' && p.isActive).sort((a: Promotion, b: Promotion) => a.sortOrder - b.sortOrder)
+
+  // Use promotion data or fallback to defaults
+  const hero = heroPromo || DEFAULT_HERO
 
   return (
     <div className="min-h-screen" style={{ background: '#080C18', color: '#fff', fontFamily: "'Inter', sans-serif" }}>
       <Navbar />
 
-      {/* Hero section – added z-0 to keep it behind the navbar */}
+      {/* Hero section – dynamic from promotion or default */}
       <section className="relative z-0 overflow-hidden" style={{ minHeight: '520px' }}>
         <div className="absolute inset-0">
           <img
-            src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/Zendaya_2019_by_Glenn_Francis.jpg/800px-Zendaya_2019_by_Glenn_Francis.jpg"
+            src={hero.imageUrl}
             alt="hero"
             className="w-full h-full object-cover object-top"
             style={{ filter: 'brightness(0.35) saturate(0.7)' }}
@@ -170,18 +184,7 @@ export default function LandingPage() {
               maxWidth: '700px',
             }}
           >
-            PLAY.{' '}
-            <span style={{ color: '#FFD700' }}>WIN.</span>
-            <br />
-            MEET YOUR
-            <br />
-            <span style={{
-              WebkitTextStroke: '1px rgba(255,255,255,0.4)',
-              color: 'transparent',
-              textShadow: 'none',
-            }}>
-              CELEBRITY
-            </span>
+            {typeof hero.title === 'string' ? hero.title : hero.title}
           </h1>
 
           <p
@@ -196,8 +199,7 @@ export default function LandingPage() {
               animation: 'fadeUp 500ms ease 200ms both',
             }}
           >
-            TRIVIA · GAMES · SPIN TO WIN — REAL PRIZES FROM CASH AND
-            CRYPTO TO VIDEO CALLS AND DINNER DATES WITH HOLLYWOOD STARS.
+            {hero.description}
           </p>
 
           <div className="flex items-center gap-3" style={{ animation: 'fadeUp 500ms ease 300ms both' }}>
@@ -206,7 +208,7 @@ export default function LandingPage() {
               className="flex items-center gap-2 text-xs font-heading font-black tracking-[2px] uppercase px-6 py-3"
               style={{ background: '#FFD700', color: '#080C18', borderRadius: '3px', boxShadow: '0 4px 20px rgba(255,215,0,0.4)' }}
             >
-              START FOR FREE <ChevronRight size={14} />
+              {hero.ctaText || 'START FOR FREE'} <ChevronRight size={14} />
             </button>
             <a
               href="#stars"
@@ -220,7 +222,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Prize categories */}
+      {/* Prize categories (unchanged) */}
       <section className="px-6 md:px-8 py-5 border-y" style={{ borderColor: 'rgba(255,255,255,0.07)', background: '#0D1021' }}>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-5xl mx-auto">
           {PRIZE_TIERS.map(p => (
@@ -262,7 +264,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Celebrity grid – dynamic from backend */}
+      {/* Celebrity grid (unchanged) */}
       <section id="stars" className="px-6 md:px-8 pb-16" style={{ background: '#080C18' }}>
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center gap-4 mb-6">
@@ -275,51 +277,80 @@ export default function LandingPage() {
             </button>
           </div>
 
-          {isLoading ? (
+          {celebLoading ? (
             <div className="flex justify-center py-16"><Spinner size="lg" /></div>
-          ) : error || !celebrities?.length ? (
+          ) : celebError || !celebrities?.length ? (
             <div className="text-center py-16 text-white/50">Failed to load celebrities. Please refresh.</div>
           ) : (
             <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))' }}>
               {celebrities.map(celeb => (
-                <CelebCard
-                  key={celeb.id}
-                  celeb={celeb}
-                  onPick={() => handleCelebrityClick(celeb.slug)}
-                />
+                <CelebCard key={celeb.id} celeb={celeb} onPick={() => handleCelebrityClick(celeb.slug)} />
               ))}
             </div>
           )}
         </div>
       </section>
 
-      {/* Giveaway cards */}
+      {/* Giveaway Cards – dynamic from promotions */}
       <section className="px-6 md:px-8 pb-16" style={{ background: '#080C18' }}>
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-5">
-          {GIVEAWAY_CARDS.map((g, i) => (
-            <button
-              key={i}
-              onClick={handleCta}
-              className="relative overflow-hidden group w-full text-left"
-              style={{ borderRadius: '4px', minHeight: '200px', border: `1px solid rgba(255,255,255,0.07)` }}
-            >
-              <img
-                src={g.img} alt={g.label} loading="lazy"
-                className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                style={{ filter: 'brightness(0.3) saturate(0.6)' }}
-              />
-              <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, rgba(8,12,24,0.8) 0%, rgba(8,12,24,0.4) 100%)` }} />
-              <div className="absolute inset-0" style={{ background: `radial-gradient(ellipse 60% 80% at 0% 50%, ${g.accent}18, transparent)` }} />
-              <div className="relative z-10 p-6 flex flex-col justify-end h-full">
-                <span className="text-xs font-heading font-black tracking-[2px] uppercase mb-2 inline-block px-2 py-0.5" style={{ background: g.accent, color: '#080C18', borderRadius: '2px', width: 'fit-content' }}>
-                  {g.label}
-                </span>
-                <p className="text-xs font-body uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.5)', maxWidth: '280px', lineHeight: '1.6' }}>
-                  {g.desc}
-                </p>
+          {promoLoading ? (
+            <div className="col-span-2 flex justify-center py-10"><Spinner size="md" /></div>
+          ) : cardPromos.length === 0 ? (
+            // Fallback default cards if none set in admin
+            <>
+              <div className="relative overflow-hidden group" style={{ borderRadius: '4px', minHeight: '200px', border: `1px solid rgba(255,255,255,0.07)` }}>
+                <img src="https://placehold.co/800x400?text=Weekly+Giveaway" alt="Weekly Giveaway" className="absolute inset-0 w-full h-full object-cover" style={{ filter: 'brightness(0.3) saturate(0.6)' }} />
+                <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, rgba(8,12,24,0.8) 0%, rgba(8,12,24,0.4) 100%)` }} />
+                <div className="relative z-10 p-6 flex flex-col justify-end h-full">
+                  <span className="text-xs font-heading font-black tracking-[2px] uppercase mb-2 inline-block px-2 py-0.5" style={{ background: '#FFD700', color: '#080C18', borderRadius: '2px', width: 'fit-content' }}>WEEKLY GIVEAWAY</span>
+                  <p className="text-xs font-body uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.5)', maxWidth: '280px', lineHeight: '1.6' }}>Win a video call with your favourite celebrity every Thursday. Available on mobile and web.</p>
+                </div>
               </div>
-            </button>
-          ))}
+              <div className="relative overflow-hidden group" style={{ borderRadius: '4px', minHeight: '200px', border: `1px solid rgba(255,255,255,0.07)` }}>
+                <img src="https://placehold.co/800x400?text=Crypto+Jackpot" alt="Crypto Jackpot" className="absolute inset-0 w-full h-full object-cover" style={{ filter: 'brightness(0.3) saturate(0.6)' }} />
+                <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, rgba(8,12,24,0.8) 0%, rgba(8,12,24,0.4) 100%)` }} />
+                <div className="relative z-10 p-6 flex flex-col justify-end h-full">
+                  <span className="text-xs font-heading font-black tracking-[2px] uppercase mb-2 inline-block px-2 py-0.5" style={{ background: '#F7931A', color: '#080C18', borderRadius: '2px', width: 'fit-content' }}>CRYPTO JACKPOT</span>
+                  <p className="text-xs font-body uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.5)', maxWidth: '280px', lineHeight: '1.6' }}>Platinum tier players compete weekly for 0.01 BTC. Top 3 spin wheel winners qualify.</p>
+                </div>
+              </div>
+            </>
+          ) : (
+            cardPromos.map(promo => (
+              <button
+                key={promo.id}
+                onClick={handleCta}
+                className="relative overflow-hidden group w-full text-left"
+                style={{ borderRadius: '4px', minHeight: '200px', border: `1px solid rgba(255,255,255,0.07)` }}
+              >
+                {promo.imageUrl && (
+                  <img
+                    src={promo.imageUrl}
+                    alt={promo.title}
+                    loading="lazy"
+                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    style={{ filter: 'brightness(0.3) saturate(0.6)' }}
+                  />
+                )}
+                <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, rgba(8,12,24,0.8) 0%, rgba(8,12,24,0.4) 100%)` }} />
+                {promo.accentColor && (
+                  <div className="absolute inset-0" style={{ background: `radial-gradient(ellipse 60% 80% at 0% 50%, ${promo.accentColor}18, transparent)` }} />
+                )}
+                <div className="relative z-10 p-6 flex flex-col justify-end h-full">
+                  <span
+                    className="text-xs font-heading font-black tracking-[2px] uppercase mb-2 inline-block px-2 py-0.5"
+                    style={{ background: promo.accentColor || '#FFD700', color: '#080C18', borderRadius: '2px', width: 'fit-content' }}
+                  >
+                    {promo.title}
+                  </span>
+                  <p className="text-xs font-body uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.5)', maxWidth: '280px', lineHeight: '1.6' }}>
+                    {promo.description}
+                  </p>
+                </div>
+              </button>
+            ))
+          )}
         </div>
       </section>
 

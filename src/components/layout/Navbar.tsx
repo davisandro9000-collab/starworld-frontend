@@ -32,9 +32,9 @@ export default function Navbar() {
   const balance = user?.coinBalance ?? 0;
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-navbar h-navbar bg-sw-card border-b border-sw-border shadow-inner-top">
-      <div className="max-w-7xl mx-auto h-full px-4 flex items-center gap-4">
-        {/* Logo – new attractive design */}
+    <header className="fixed top-0 left-0 right-0 z-navbar bg-sw-card border-b border-sw-border shadow-inner-top">
+      <div className="max-w-7xl mx-auto h-navbar px-4 flex items-center justify-between gap-2">
+        {/* Logo */}
         <Link to="/" className="flex items-center gap-2 shrink-0">
           <div className="w-8 h-8 rounded flex items-center justify-center font-heading font-black text-xs" style={{ background: 'linear-gradient(135deg, #FFD700, #E8A020)', color: '#080C18' }}>
             SW
@@ -44,6 +44,7 @@ export default function Navbar() {
           </span>
         </Link>
 
+        {/* Desktop navigation */}
         <nav className="hidden md:flex items-center gap-1 ml-2">
           {navItems.map(({ to, label, end }) => (
             <NavLink
@@ -63,17 +64,22 @@ export default function Navbar() {
           ))}
         </nav>
 
-        <div className="ml-auto flex items-center gap-2.5">
+        {/* Right side – responsive */}
+        <div className="flex items-center gap-1 sm:gap-2.5">
           {user ? (
             <>
-              <div className="flex items-center gap-1.5 bg-sw-bg/50 rounded-full px-3 py-1.5 border border-sw-border">
+              {/* Coin balance – hidden on smallest screens */}
+              <div className="hidden sm:flex items-center gap-1.5 bg-sw-bg/50 rounded-full px-2 sm:px-3 py-1 sm:py-1.5 border border-sw-border">
                 <span className="text-xs text-gold">🪙</span>
-                <span className="font-heading font-semibold text-sm text-white">
+                <span className="font-heading font-semibold text-xs sm:text-sm text-white">
                   {balance.toLocaleString()}
                 </span>
               </div>
 
-              <TierBadge tier={user?.tier?.slug ?? 'bronze'} />
+              {/* Tier badge – hidden on smallest screens */}
+              <div className="hidden sm:block">
+                <TierBadge tier={user?.tier?.slug ?? 'bronze'} />
+              </div>
 
               <NotificationBell />
 
@@ -117,15 +123,16 @@ export default function Navbar() {
             </>
           ) : (
             <>
-              <Link to="/auth/login" className="btn-ghost text-xs px-3 py-1.5">
+              <Link to="/auth/login" className="btn-ghost text-xs px-2 sm:px-3 py-1.5">
                 Log in
               </Link>
-              <Link to="/auth/register" className="btn-gold text-xs px-3 py-1.5">
+              <Link to="/auth/register" className="btn-gold text-xs px-2 sm:px-3 py-1.5">
                 Sign up
               </Link>
             </>
           )}
 
+          {/* Mobile menu button */}
           <button
             className="md:hidden btn-ghost p-1.5"
             onClick={() => setMobileOpen(v => !v)}
@@ -136,6 +143,7 @@ export default function Navbar() {
         </div>
       </div>
 
+      {/* Mobile dropdown menu */}
       {mobileOpen && (
         <div className="md:hidden bg-sw-card border-t border-sw-border px-4 py-3 animate-fade-in">
           <nav className="flex flex-col gap-1">

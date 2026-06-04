@@ -32,7 +32,7 @@ export default function Navbar() {
   const balance = user?.coinBalance ?? 0;
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-navbar bg-sw-card border-b border-sw-border shadow-inner-top">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-sw-card border-b border-sw-border shadow-inner-top">
       <div className="max-w-7xl mx-auto h-navbar px-4 flex items-center justify-between gap-2">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2 shrink-0">
@@ -64,11 +64,10 @@ export default function Navbar() {
           ))}
         </nav>
 
-        {/* Right side – responsive */}
+        {/* Right side */}
         <div className="flex items-center gap-1 sm:gap-2.5">
           {user ? (
             <>
-              {/* Coin balance – hidden on smallest screens */}
               <div className="hidden sm:flex items-center gap-1.5 bg-sw-bg/50 rounded-full px-2 sm:px-3 py-1 sm:py-1.5 border border-sw-border">
                 <span className="text-xs text-gold">🪙</span>
                 <span className="font-heading font-semibold text-xs sm:text-sm text-white">
@@ -76,13 +75,13 @@ export default function Navbar() {
                 </span>
               </div>
 
-              {/* Tier badge – hidden on smallest screens */}
               <div className="hidden sm:block">
                 <TierBadge tier={user?.tier?.slug ?? 'bronze'} />
               </div>
 
               <NotificationBell />
 
+              {/* Avatar dropdown – opaque and high z-index */}
               <div className="relative group">
                 <button
                   className="w-8 h-8 rounded-full bg-gold-gradient flex items-center justify-center text-sw-bg font-heading font-bold text-xs shrink-0 hover:shadow-gold-sm transition-shadow overflow-hidden"
@@ -98,7 +97,7 @@ export default function Navbar() {
                   />
                 </button>
 
-                <div className="absolute right-0 top-full mt-2 w-44 glass rounded-sw-lg py-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 shadow-card">
+                <div className="absolute right-0 top-full mt-2 w-44 bg-sw-card border border-sw-border rounded-sw-lg py-1 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 z-[100]">
                   <Link
                     to="/dashboard"
                     className="flex items-center gap-2 px-3 py-2 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors"
@@ -132,7 +131,6 @@ export default function Navbar() {
             </>
           )}
 
-          {/* Mobile menu button */}
           <button
             className="md:hidden btn-ghost p-1.5"
             onClick={() => setMobileOpen(v => !v)}
@@ -143,7 +141,6 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Mobile dropdown menu */}
       {mobileOpen && (
         <div className="md:hidden bg-sw-card border-t border-sw-border px-4 py-3 animate-fade-in">
           <nav className="flex flex-col gap-1">

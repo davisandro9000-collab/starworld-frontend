@@ -18,6 +18,7 @@ export default function Navbar() {
     { to: '/games', label: 'Games' },
     { to: '/marketplace', label: 'Marketplace' },
     { to: '/referrals', label: 'Referrals' },
+    { to: '/football', label: 'Football' }, 
   ];
 
   const handleLogout = async () => {

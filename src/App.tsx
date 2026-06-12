@@ -18,8 +18,11 @@ import ReferralsPage from './pages/ReferralsPage';
 import GamesPage from './pages/GamesPage';
 import DepositPage from './pages/DepositPage';
 import { useSocketEvents } from './hooks/useSocketEvents';
-import FootballPage from './pages/FootballPage';
+
 import FootballStarPage from './pages/FootballStarPage';
+import FootballTeamsPage from './pages/FootballTeamsPage';
+import FootballTeamPage from './pages/FootballTeamPage';
+import FootballLeaderboardPage from './pages/FootballLeaderboardPage';
 
 function AppContent() {
   useSocketEvents();
@@ -43,8 +46,11 @@ function AppContent() {
           <Route path="/ticket-game/:sessionId" element={<TicketGamePage />} />
           <Route path="/referrals" element={<ReferralsPage />} />
           <Route path="/games" element={<GamesPage />} />
-          <Route path="/football" element={<FootballPage />} />
+          
           <Route path="/football/star/:slug" element={<FootballStarPage />} />
+          <Route path="/football" element={<FootballTeamsPage />} />
+          <Route path="/football/team/:slug" element={<FootballTeamPage />} />
+          <Route path="/football/leaderboard" element={<FootballLeaderboardPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -4,13 +4,45 @@ import { getUserSocket, disconnectUserSocket } from '../lib/socketClient';
 import { useAuthStore } from '../stores/authStore';
 import { useNotifStore, AppNotification } from '../stores/notifStore';
 import { useCoinStore } from '../stores/coinStore';
+import { api } from '../api/axios';
 
 export const useSocketEvents = () => {
   const accessToken = useAuthStore((state) => state.accessToken);
   const setUser = useAuthStore((state) => state.setUser);
   const addNotification = useNotifStore((state) => state.addNotification);
   const setBalance = useCoinStore((state) => state.setBalance);
+  const user = useAuthStore((state) => state.user);
 
+  // Force refresh balance immediately after a deposit credit notification
+  const refreshBalance = async () => {
+    try {
+      const res = await api.get('/users/me');
+      // Handle any response shape: { user: {...} } or direct {...}
+      const userData = res.data.user || res.data;
+      if (userData && typeof userData.coinBalance === 'number') {
+        const newBalance = userData.coinBalance;
+        if (newBalance !== user?.coinBalance) {
+          console.log('🪙 Balance refreshed to', newBalance);
+          setBalance(newBalance);
+          setUser({ ...user!, coinBalance: newBalance });
+        }
+      } else {
+        console.warn('Unexpected /users/me response:', res.data);
+      }
+    } catch (err) {
+      console.error('Failed to refresh balance', err);
+    }
+  };
+
+  // Poll every 30 seconds
+  useEffect(() => {
+    if (!accessToken || !user) return;
+    const interval = setInterval(refreshBalance, 30000);
+    refreshBalance(); // immediate first run
+    return () => clearInterval(interval);
+  }, [accessToken, user]);
+
+  // Socket listeners
   useEffect(() => {
     if (!accessToken) return;
 
@@ -89,12 +121,8 @@ export const useSocketEvents = () => {
     });
 
     socket.on('coin_update', (data) => {
-      console.log('🪙 Coin update:', data);
-      setBalance(data.newBalance);
-      const currentUser = useAuthStore.getState().user;
-      if (currentUser) {
-        setUser({ ...currentUser, coinBalance: data.newBalance });
-      }
+      console.log('🪙 Coin update (socket):', data);
+      refreshBalance(); // also refresh via API to be safe
     });
 
     return () => {
@@ -107,5 +135,5 @@ export const useSocketEvents = () => {
       socket.off('coin_update');
       disconnectUserSocket();
     };
-  }, [accessToken, addNotification, setUser, setBalance]);
+  }, [accessToken, addNotification, setUser, setBalance, refreshBalance]);
 };
